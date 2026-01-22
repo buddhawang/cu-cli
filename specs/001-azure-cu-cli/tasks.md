@@ -43,19 +43,19 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T010 Create error types with CliError class in src/lib/errors.ts
-- [ ] T011 [P] Create validation utilities in src/lib/validation.ts (URL validation, file path validation)
-- [ ] T012 [P] Create HTTP client wrapper with retry logic in src/lib/http.ts
-- [ ] T013 [P] Create progress indicator utilities in src/lib/progress.ts
-- [ ] T014 Create CLI entry point with commander in src/index.ts (version, help only)
-- [ ] T015 Create base output formatter interface in src/services/formatters/index.ts
-- [ ] T016 [P] Create JSON formatter in src/services/formatters/json.ts
-- [ ] T017 [P] Create table formatter in src/services/formatters/table.ts
-- [ ] T018 Unit test for CliError in tests/unit/lib/errors.test.ts
-- [ ] T019 [P] Unit test for validation utilities in tests/unit/lib/validation.test.ts
-- [ ] T020 Contract test for CLI version/help in tests/contract/cli-base.test.ts
+- [x] T010 Create error types with CliError class in src/lib/errors.ts
+- [x] T011 [P] Create validation utilities in src/lib/validation.ts (URL validation, file path validation)
+- [x] T012 [P] Create HTTP client wrapper with retry logic in src/lib/http.ts
+- [x] T013 [P] Create progress indicator utilities in src/lib/progress.ts
+- [x] T014 Create CLI entry point with commander in src/index.ts (version, help only)
+- [x] T015 Create base output formatter interface in src/services/formatters/index.ts
+- [x] T016 [P] Create JSON formatter in src/services/formatters/json.ts
+- [x] T017 [P] Create table formatter in src/services/formatters/table.ts
+- [x] T018 Unit test for CliError in tests/unit/lib/errors.test.ts
+- [x] T019 [P] Unit test for validation utilities in tests/unit/lib/validation.test.ts
+- [x] T020 Contract test for CLI version/help in tests/contract/cli-base.test.ts
 
-**Checkpoint**: Foundation ready - `cu --version` and `cu --help` work in <200ms. User story implementation can now begin.
+**Checkpoint**: ✅ Foundation ready - `cu --version` and `cu --help` work in <200ms. User story implementation can now begin.
 
 ---
 

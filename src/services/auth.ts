@@ -7,7 +7,6 @@ import {
   PublicClientApplication,
   CryptoProvider,
   LogLevel,
-  type AuthenticationResult,
   type AccountInfo,
   type Configuration,
   InteractionRequiredAuthError,
@@ -77,7 +76,7 @@ class FileCachePlugin {
     this.cacheLocation = cacheLocation;
   }
 
-  async beforeCacheAccess(cacheContext: { tokenCache: { deserialize: (data: string) => void } }): Promise<void> {
+  beforeCacheAccess(cacheContext: { tokenCache: { deserialize: (data: string) => void } }): Promise<void> {
     try {
       if (fs.existsSync(this.cacheLocation)) {
         const data = fs.readFileSync(this.cacheLocation, 'utf-8');
@@ -86,9 +85,10 @@ class FileCachePlugin {
     } catch {
       // Ignore errors - cache will be empty
     }
+    return Promise.resolve();
   }
 
-  async afterCacheAccess(cacheContext: { 
+  afterCacheAccess(cacheContext: { 
     tokenCache: { serialize: () => string }; 
     cacheHasChanged: boolean 
   }): Promise<void> {
@@ -103,6 +103,7 @@ class FileCachePlugin {
         // Ignore write errors
       }
     }
+    return Promise.resolve();
   }
 }
 
@@ -113,7 +114,7 @@ class FileCachePlugin {
 export class AuthService {
   private pca: PublicClientApplication | null = null;
   private cryptoProvider = new CryptoProvider();
-  private tenantId?: string;
+  private tenantId: string | undefined;
 
   /**
    * Creates an AuthService instance.
@@ -126,12 +127,12 @@ export class AuthService {
   /**
    * Initializes the MSAL client with persistent token cache.
    */
-  private async initialize(): Promise<PublicClientApplication> {
+  private initialize(): PublicClientApplication {
     if (this.pca !== null) {
       return this.pca;
     }
 
-    const authority = this.tenantId
+    const authority = this.tenantId !== undefined && this.tenantId !== ''
       ? `https://login.microsoftonline.com/${this.tenantId}`
       : MSAL_CONFIG.authority;
 
@@ -165,7 +166,7 @@ export class AuthService {
    * @returns User identity after successful login
    */
   async loginInteractive(): Promise<UserIdentity> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
 
     // Generate PKCE codes
     const { verifier, challenge } = await this.cryptoProvider.generatePkceCodes();
@@ -201,7 +202,7 @@ export class AuthService {
   async loginDeviceCode(
     deviceCodeCallback: (message: string) => void
   ): Promise<UserIdentity> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
 
     const result = await pca.acquireTokenByDeviceCode({
       scopes: AUTH_SCOPES,
@@ -228,7 +229,7 @@ export class AuthService {
    * @throws CliError if no cached credentials or refresh fails
    */
   async acquireTokenSilent(): Promise<string> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
     const accounts = await pca.getTokenCache().getAllAccounts();
 
     if (accounts.length === 0) {
@@ -242,8 +243,18 @@ export class AuthService {
     }
 
     try {
+      const account = accounts[0];
+      if (account === undefined) {
+        throw new CliError(
+          ErrorCodes.AUTH_REQUIRED,
+          'Authentication required',
+          'No cached credentials found',
+          'Run `cu login` to authenticate',
+          1
+        );
+      }
       const result = await pca.acquireTokenSilent({
-        account: accounts[0],
+        account,
         scopes: AUTH_SCOPES,
       });
 
@@ -275,7 +286,7 @@ export class AuthService {
    * Clears all cached credentials (logout).
    */
   async logout(): Promise<void> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
     const accounts = await pca.getTokenCache().getAllAccounts();
 
     for (const account of accounts) {
@@ -288,14 +299,19 @@ export class AuthService {
    * @returns User identity or null if not authenticated
    */
   async getIdentity(): Promise<UserIdentity | null> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
     const accounts = await pca.getTokenCache().getAllAccounts();
 
     if (accounts.length === 0) {
       return null;
     }
 
-    return this.accountToIdentity(accounts[0]);
+    const account = accounts[0];
+    if (account === undefined) {
+      return null;
+    }
+
+    return this.accountToIdentity(account);
   }
 
   /**
@@ -303,7 +319,7 @@ export class AuthService {
    * @returns Full authentication state including expiration
    */
   async getAuthState(): Promise<AuthState> {
-    const pca = await this.initialize();
+    const pca = this.initialize();
     const accounts = await pca.getTokenCache().getAllAccounts();
 
     if (accounts.length === 0) {
@@ -315,6 +331,13 @@ export class AuthService {
     }
 
     const account = accounts[0];
+    if (account === undefined) {
+      return {
+        isAuthenticated: false,
+        user: null,
+        expiresAt: null,
+      };
+    }
 
     // Try to get token info for expiration
     let expiresAt: Date | null = null;
@@ -415,7 +438,7 @@ export class AuthService {
       });
 
       // Listen on random available port
-      server.listen(0, '127.0.0.1', async () => {
+      server.listen(0, '127.0.0.1', () => {
         const address = server.address();
         if (typeof address !== 'object' || address === null) {
           server.close();
@@ -428,7 +451,7 @@ export class AuthService {
 
         // Build authorization URL
         const authUrl = new URL(
-          `${this.tenantId ? `https://login.microsoftonline.com/${this.tenantId}` : MSAL_CONFIG.authority}/oauth2/v2.0/authorize`
+          `${this.tenantId !== undefined && this.tenantId !== '' ? `https://login.microsoftonline.com/${this.tenantId}` : MSAL_CONFIG.authority}/oauth2/v2.0/authorize`
         );
         authUrl.searchParams.set('client_id', MSAL_CONFIG.clientId);
         authUrl.searchParams.set('response_type', 'code');
@@ -439,12 +462,10 @@ export class AuthService {
         authUrl.searchParams.set('prompt', 'select_account');
 
         // Open browser
-        try {
-          await openBrowser(authUrl.toString());
-        } catch {
+        openBrowser(authUrl.toString()).catch(() => {
           // If browser open fails, provide URL to user
           process.stderr.write(`\nOpen this URL in your browser:\n${authUrl.toString()}\n\n`);
-        }
+        });
       });
 
       // Timeout after 5 minutes

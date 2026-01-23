@@ -128,7 +128,7 @@ describe('Login Commands Contract', () => {
       const result = runCli('--json logout');
 
       expect(result.exitCode).toBe(0);
-      const output = JSON.parse(result.stdout);
+      const output = JSON.parse(result.stdout) as { success: boolean };
       expect(output.success).toBe(true);
     });
   });

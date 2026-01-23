@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { AccountInfo, AuthenticationResult } from '@azure/msal-node';
+import type { AccountInfo, AuthenticationResult, DeviceCodeRequest } from '@azure/msal-node';
 import { CliError } from '../../../src/lib/errors.js';
 
 // Mock account info
@@ -43,12 +43,19 @@ const mockTokenCache = {
 // Mock PCA instance - shared instance
 const mockPcaInstance = {
   acquireTokenByCode: vi.fn().mockResolvedValue(mockAuthResult),
-  acquireTokenByDeviceCode: vi.fn().mockImplementation(async (request) => {
+  acquireTokenByDeviceCode: vi.fn().mockImplementation((request: DeviceCodeRequest) => {
     // Call the device code callback with a mock message
-    if (request.deviceCodeCallback) {
-      request.deviceCodeCallback({ message: 'Go to https://microsoft.com/devicelogin and enter code ABC123' });
+    if (request.deviceCodeCallback !== undefined && typeof request.deviceCodeCallback === 'function') {
+      request.deviceCodeCallback({
+        message: 'Go to https://microsoft.com/devicelogin and enter code ABC123',
+        userCode: 'ABC123',
+        deviceCode: 'device-code-123',
+        verificationUri: 'https://microsoft.com/devicelogin',
+        expiresIn: 900,
+        interval: 5,
+      });
     }
-    return mockAuthResult;
+    return Promise.resolve(mockAuthResult);
   }),
   acquireTokenSilent: vi.fn().mockResolvedValue(mockAuthResult),
   getTokenCache: vi.fn(() => mockTokenCache),
@@ -97,12 +104,19 @@ describe('AuthService', () => {
     // Reset default mock behavior
     mockTokenCache.getAllAccounts.mockResolvedValue([mockAccountInfo]);
     mockPcaInstance.acquireTokenSilent.mockResolvedValue(mockAuthResult);
-    mockPcaInstance.acquireTokenByDeviceCode.mockImplementation(async (request) => {
+    mockPcaInstance.acquireTokenByDeviceCode.mockImplementation((request: DeviceCodeRequest) => {
       // Call the device code callback with a mock message
-      if (request.deviceCodeCallback) {
-        request.deviceCodeCallback({ message: 'Go to https://microsoft.com/devicelogin and enter code ABC123' });
+      if (typeof request.deviceCodeCallback === 'function') {
+        request.deviceCodeCallback({
+          message: 'Go to https://microsoft.com/devicelogin and enter code ABC123',
+          userCode: 'ABC123',
+          deviceCode: 'device-code-123',
+          verificationUri: 'https://microsoft.com/devicelogin',
+          expiresIn: 900,
+          interval: 5,
+        });
       }
-      return mockAuthResult;
+      return Promise.resolve(mockAuthResult);
     });
   });
 

@@ -106,8 +106,10 @@ describe('CLI Base Contract', () => {
     it('should_show_help_when_no_arguments_provided', () => {
       const result = runCli('');
 
-      // Commander shows help on stdout with exit code 0
-      expect(result.stdout).toContain('Usage:');
+      // Commander outputs help to stderr when no command is provided
+      // The help text should still contain Usage information
+      const output = result.stdout || result.stderr;
+      expect(output).toContain('Usage:');
     });
   });
 

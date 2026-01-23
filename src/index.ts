@@ -7,6 +7,7 @@
 
 import { Command } from 'commander';
 import { CliError } from './lib/errors.js';
+import { registerLoginCommands } from './commands/login.js';
 
 // Declare version constant (injected by esbuild)
 declare const __VERSION__: string;
@@ -23,6 +24,9 @@ program
   .option('--json', 'Output in JSON format')
   .option('--profile <name>', 'Use specific configuration profile')
   .option('--verbose', 'Enable verbose output');
+
+// Register command groups
+registerLoginCommands(program);
 
 /**
  * Handles CLI errors with proper formatting and exit codes.

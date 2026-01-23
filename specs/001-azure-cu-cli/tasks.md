@@ -94,23 +94,23 @@
 
 ### Implementation for User Story 2
 
-- [ ] T035 [P] [US2] Create ConfigProfile interface in src/models/config.ts
-- [ ] T036 [P] [US2] Create AppConfig interface in src/models/config.ts
-- [ ] T037 [US2] Create ConfigService in src/services/config.ts
-- [ ] T038 [US2] Implement loadConfig (read ~/.cu/config.json) in src/services/config.ts
-- [ ] T039 [US2] Implement saveConfig (write ~/.cu/config.json) in src/services/config.ts
-- [ ] T040 [US2] Implement setProfile (create/update profile) in src/services/config.ts
-- [ ] T041 [US2] Implement useProfile (switch active profile) in src/services/config.ts
-- [ ] T042 [US2] Implement getActiveProfile in src/services/config.ts
-- [ ] T043 [US2] Create config set command handler in src/commands/config.ts
-- [ ] T044 [US2] Create config show command handler in src/commands/config.ts
-- [ ] T045 [US2] Create config list command handler in src/commands/config.ts
-- [ ] T046 [US2] Create config use command handler in src/commands/config.ts
-- [ ] T047 [US2] Register config commands in src/index.ts
-- [ ] T048 [US2] Unit test for ConfigService in tests/unit/services/config.test.ts
-- [ ] T049 [US2] Contract test for cu config set/show/list/use in tests/contract/config.test.ts
+- [x] T035 [P] [US2] Create ConfigProfile interface in src/models/config.ts
+- [x] T036 [P] [US2] Create AppConfig interface in src/models/config.ts
+- [x] T037 [US2] Create ConfigService in src/services/config.ts
+- [x] T038 [US2] Implement loadConfig (read ~/.cu/config.json) in src/services/config.ts
+- [x] T039 [US2] Implement saveConfig (write ~/.cu/config.json) in src/services/config.ts
+- [x] T040 [US2] Implement setProfile (create/update profile) in src/services/config.ts
+- [x] T041 [US2] Implement useProfile (switch active profile) in src/services/config.ts
+- [x] T042 [US2] Implement getActiveProfile in src/services/config.ts
+- [x] T043 [US2] Create config set command handler in src/commands/config.ts
+- [x] T044 [US2] Create config show command handler in src/commands/config.ts
+- [x] T045 [US2] Create config list command handler in src/commands/config.ts
+- [x] T046 [US2] Create config use command handler in src/commands/config.ts
+- [x] T047 [US2] Register config commands in src/index.ts
+- [x] T048 [US2] Unit test for ConfigService in tests/unit/services/config.test.ts
+- [x] T049 [US2] Contract test for cu config set/show/list/use in tests/contract/config.test.ts
 
-**Checkpoint**: User Stories 1 AND 2 complete - Users can authenticate AND configure endpoints. Ready for API calls.
+**Checkpoint**: ✅ User Stories 1 AND 2 complete - Users can authenticate AND configure endpoints. Ready for API calls. (verified 2026-01-23)
 
 ---
 

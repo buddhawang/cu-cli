@@ -8,6 +8,7 @@
 import { Command } from 'commander';
 import { CliError } from './lib/errors.js';
 import { registerLoginCommands } from './commands/login.js';
+import { registerConfigCommands } from './commands/config.js';
 
 // Declare version constant (injected by esbuild)
 declare const __VERSION__: string;
@@ -27,6 +28,7 @@ program
 
 // Register command groups
 registerLoginCommands(program);
+registerConfigCommands(program);
 
 /**
  * Handles CLI errors with proper formatting and exit codes.

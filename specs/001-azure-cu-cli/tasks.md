@@ -67,22 +67,22 @@
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Create UserIdentity interface in src/models/auth.ts
-- [ ] T022 [P] [US1] Create AuthState interface in src/models/auth.ts
-- [ ] T023 [US1] Create AuthService with MSAL integration in src/services/auth.ts
-- [ ] T024 [US1] Implement interactive login flow in src/services/auth.ts (acquireTokenInteractive)
-- [ ] T025 [US1] Implement silent token acquisition in src/services/auth.ts (acquireTokenSilent)
-- [ ] T026 [US1] Implement token persistence with msal-node-extensions in src/services/auth.ts
-- [ ] T027 [US1] Implement logout (clear token cache) in src/services/auth.ts
-- [ ] T028 [US1] Implement getIdentity for whoami in src/services/auth.ts
-- [ ] T029 [US1] Create login command handler in src/commands/login.ts (cu login)
-- [ ] T030 [US1] Create logout command handler in src/commands/login.ts (cu logout)
-- [ ] T031 [US1] Create whoami command handler in src/commands/login.ts (cu whoami)
-- [ ] T032 [US1] Register login/logout/whoami commands in src/index.ts
-- [ ] T033 [US1] Unit test for AuthService in tests/unit/services/auth.test.ts
-- [ ] T034 [US1] Contract test for cu login/logout/whoami in tests/contract/login.test.ts
+- [x] T021 [P] [US1] Create UserIdentity interface in src/models/auth.ts
+- [x] T022 [P] [US1] Create AuthState interface in src/models/auth.ts
+- [x] T023 [US1] Create AuthService with MSAL integration in src/services/auth.ts
+- [x] T024 [US1] Implement interactive login flow in src/services/auth.ts (acquireTokenInteractive)
+- [x] T025 [US1] Implement silent token acquisition in src/services/auth.ts (acquireTokenSilent)
+- [x] T026 [US1] Implement token persistence with msal-node-extensions in src/services/auth.ts
+- [x] T027 [US1] Implement logout (clear token cache) in src/services/auth.ts
+- [x] T028 [US1] Implement getIdentity for whoami in src/services/auth.ts
+- [x] T029 [US1] Create login command handler in src/commands/login.ts (cu login)
+- [x] T030 [US1] Create logout command handler in src/commands/login.ts (cu logout)
+- [x] T031 [US1] Create whoami command handler in src/commands/login.ts (cu whoami)
+- [x] T032 [US1] Register login/logout/whoami commands in src/index.ts
+- [x] T033 [US1] Unit test for AuthService in tests/unit/services/auth.test.ts
+- [x] T034 [US1] Contract test for cu login/logout/whoami in tests/contract/login.test.ts
 
-**Checkpoint**: User Story 1 complete - `cu login`, `cu logout`, `cu whoami` all work. Authentication flows tested.
+**Checkpoint**: ✅ User Story 1 complete - `cu login`, `cu logout`, `cu whoami` all work. Authentication flows tested. (verified 2026-01-22)
 
 ---
 

@@ -122,20 +122,20 @@
 
 ### Implementation for User Story 3
 
-- [ ] T050 [P] [US3] Create Analyzer interface in src/models/analyzer.ts
-- [ ] T051 [P] [US3] Create AnalyzerField interface in src/models/analyzer.ts
-- [ ] T052 [P] [US3] Create AnalyzerList interface in src/models/analyzer.ts
-- [ ] T053 [US3] Create ContentUnderstandingClient in src/services/content-understanding.ts
-- [ ] T054 [US3] Implement listAnalyzers API call in src/services/content-understanding.ts
-- [ ] T055 [US3] Implement getAnalyzer API call in src/services/content-understanding.ts
-- [ ] T056 [US3] Integrate auth token acquisition in ContentUnderstandingClient
-- [ ] T057 [US3] Create analyzer list command handler in src/commands/analyzer.ts
-- [ ] T058 [US3] Create analyzer show command handler in src/commands/analyzer.ts
-- [ ] T059 [US3] Register analyzer commands in src/index.ts
-- [ ] T060 [US3] Unit test for ContentUnderstandingClient (analyzers) in tests/unit/services/content-understanding.test.ts
-- [ ] T061 [US3] Contract test for cu analyzer list/show in tests/contract/analyzer.test.ts
+- [x] T050 [P] [US3] Create Analyzer interface in src/models/analyzer.ts
+- [x] T051 [P] [US3] Create AnalyzerField interface in src/models/analyzer.ts
+- [x] T052 [P] [US3] Create AnalyzerList interface in src/models/analyzer.ts
+- [x] T053 [US3] Create ContentUnderstandingClient in src/services/content-understanding.ts
+- [x] T054 [US3] Implement listAnalyzers API call in src/services/content-understanding.ts
+- [x] T055 [US3] Implement getAnalyzer API call in src/services/content-understanding.ts
+- [x] T056 [US3] Integrate auth token acquisition in ContentUnderstandingClient
+- [x] T057 [US3] Create analyzer list command handler in src/commands/analyzer.ts
+- [x] T058 [US3] Create analyzer show command handler in src/commands/analyzer.ts
+- [x] T059 [US3] Register analyzer commands in src/index.ts
+- [x] T060 [US3] Unit test for ContentUnderstandingClient (analyzers) in tests/unit/services/content-understanding.test.ts
+- [x] T061 [US3] Contract test for cu analyzer list/show in tests/contract/analyzer.test.ts
 
-**Checkpoint**: User Story 3 complete - Users can discover what analyzers are available. Ready for document analysis.
+**Checkpoint**: ✅ User Story 3 complete - Users can discover what analyzers are available. Ready for document analysis. (verified 2026-01-23)
 
 ---
 

@@ -17,8 +17,8 @@
 
 **Purpose**: Add new dependency and prepare project structure
 
-- [ ] T001 Add `pdf-to-png-converter` as optional dependency in package.json
-- [ ] T002 [P] Bump version to 0.2.0 in package.json (breaking JSON output change)
+- [x] T001 Add `pdf-to-png-converter` as optional dependency in package.json
+- [x] T002 [P] Bump version to 0.2.0 in package.json (breaking JSON output change)
 
 ---
 

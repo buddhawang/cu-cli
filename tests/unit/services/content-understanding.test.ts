@@ -26,6 +26,7 @@ const mockConfigService = {
     name: 'default',
     profile: mockProfile,
   }),
+  getApiKey: vi.fn().mockReturnValue(undefined),
 } as unknown as ConfigService;
 
 vi.mock('../../../src/services/auth.js', () => ({

@@ -12,6 +12,7 @@ import { registerConfigCommands } from './commands/config.js';
 import { registerAnalyzerCommands } from './commands/analyzer.js';
 import { registerAnalyzeCommands } from './commands/analyze.js';
 import { registerDefaultsCommands } from './commands/defaults.js';
+import { registerStatusCommands } from './commands/status.js';
 
 // Declare version constant (injected by esbuild)
 declare const __VERSION__: string;
@@ -35,6 +36,7 @@ registerConfigCommands(program);
 registerAnalyzerCommands(program);
 registerAnalyzeCommands(program);
 registerDefaultsCommands(program);
+registerStatusCommands(program);
 
 /**
  * Handles CLI errors with proper formatting and exit codes.

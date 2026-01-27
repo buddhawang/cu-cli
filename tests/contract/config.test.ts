@@ -263,4 +263,103 @@ describe('Config Commands Contract', () => {
       expect(result.stdout).toContain('config');
     });
   });
+
+  describe('cu config set --api-key', () => {
+    it('should_save_api_key_when_provided', () => {
+      const result = runCli('config set --endpoint https://test.cognitiveservices.azure.com --api-key my-test-api-key-123');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('Configuration saved');
+      expect(result.stdout).toContain('API Key');
+    });
+
+    it('should_show_masked_api_key_in_config_show', () => {
+      runCli('config set --endpoint https://test.cognitiveservices.azure.com --api-key my-test-api-key-123');
+      
+      const result = runCli('config show');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('API Key');
+      // Should be masked - not show the full key
+      expect(result.stdout).not.toContain('my-test-api-key-123');
+      // Should show last 4 characters with masking
+      expect(result.stdout).toMatch(/•+123/);
+    });
+
+    it('should_output_api_key_set_status_in_json', () => {
+      const result = runCli('--json config set --endpoint https://test.cognitiveservices.azure.com --api-key test-key');
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout) as { success: boolean; apiKeySet: boolean };
+      expect(output.success).toBe(true);
+      expect(output.apiKeySet).toBe(true);
+    });
+
+    it('should_allow_setting_endpoint_only_without_api_key', () => {
+      const result = runCli('config set --endpoint https://test.cognitiveservices.azure.com');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('Configuration saved');
+      expect(result.stdout).not.toContain('API Key');
+    });
+  });
+
+  describe('cu config unset api-key', () => {
+    it('should_remove_api_key_from_profile', () => {
+      // First set up config with API key
+      runCli('config set --endpoint https://test.cognitiveservices.azure.com --api-key my-key');
+      
+      const result = runCli('config unset api-key');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('removed');
+      
+      // Verify it's gone
+      const showResult = runCli('config show');
+      expect(showResult.stdout).not.toContain('API Key');
+    });
+
+    it('should_remove_api_key_from_named_profile', () => {
+      // Set up named profile with API key
+      runCli('config set --endpoint https://test.cognitiveservices.azure.com --api-key my-key -n myprofile');
+      
+      const result = runCli('config unset api-key --name myprofile');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('myprofile');
+    });
+
+    it('should_succeed_even_if_no_api_key_was_set', () => {
+      // Set up config without API key
+      runCli('config set --endpoint https://test.cognitiveservices.azure.com');
+      
+      const result = runCli('config unset api-key');
+
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('should_fail_when_profile_not_found', () => {
+      const result = runCli('config unset api-key --name nonexistent');
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain('not found');
+    });
+
+    it('should_output_json_when_json_flag_provided', () => {
+      runCli('config set --endpoint https://test.cognitiveservices.azure.com --api-key my-key');
+      
+      const result = runCli('--json config unset api-key');
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout) as { success: boolean; profile: string };
+      expect(output.success).toBe(true);
+    });
+
+    it('should_show_unset_in_help', () => {
+      const result = runCli('config unset --help');
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('api-key');
+    });
+  });
 });

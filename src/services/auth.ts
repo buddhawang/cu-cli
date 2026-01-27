@@ -353,10 +353,46 @@ export class AuthService {
       // Ignore errors, we just won't have expiration info
     }
 
+    // Calculate if token needs refresh soon (within 5 minutes)
+    const needsRefresh = expiresAt !== null && 
+      (expiresAt.getTime() - Date.now()) < 5 * 60 * 1000;
+
     return {
       isAuthenticated: true,
       user: this.accountToIdentity(account),
       expiresAt,
+      needsRefresh,
+    };
+  }
+
+  /**
+   * Gets quick auth status by inspecting cache without network calls.
+   * This is much faster than getAuthState() as it doesn't acquire tokens.
+   * @returns Quick auth status from cache inspection only
+   */
+  async getQuickAuthStatus(): Promise<{ 
+    hasCredentials: boolean; 
+    account: { email: string; name: string; tenantId: string } | null;
+  }> {
+    const pca = this.initialize();
+    const accounts = await pca.getTokenCache().getAllAccounts();
+
+    if (accounts.length === 0) {
+      return { hasCredentials: false, account: null };
+    }
+
+    const account = accounts[0];
+    if (account === undefined) {
+      return { hasCredentials: false, account: null };
+    }
+
+    return {
+      hasCredentials: true,
+      account: {
+        email: account.username,
+        name: account.name ?? account.username,
+        tenantId: account.tenantId,
+      },
     };
   }
 

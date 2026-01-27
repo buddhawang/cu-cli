@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-28
+
+### Added
+
+- **API Key Authentication**
+  - `cu config set --api-key <key>` - Configure API key for authentication
+  - `cu config unset api-key` - Remove API key from profile
+  - API key takes priority over Azure AD when both are configured
+  - Masked API key display in `cu config show`
+
+- **Status Command**
+  - `cu status` - Display authentication and configuration status
+  - Shows authentication method (API Key, Azure AD, or none)
+  - Shows token expiry and refresh status
+  - Supports `--json` for machine-readable output
+
+- **PDF Overlay Rendering**
+  - PDF files now supported for `--format overlay` output
+  - `--dpi <number>` option for PDF rendering resolution (default: 150)
+  - `--page <number>` option to render specific PDF page
+  - Multi-page PDFs generate numbered output files (e.g., `result-1.png`, `result-2.png`)
+  - Automatic coordinate conversion from inches to pixels
+
+### Changed
+
+- **JSON Output Format** (BREAKING)
+  - `cu analyze --format json` now returns raw API response from the service
+  - Previously returned a transformed/simplified format
+  - This provides access to all API fields including `boundingRegions`
+
+### Fixed
+
+- Error messages for 401 responses now indicate whether API key or Azure AD was used
+- Improved error handling for password-protected and corrupted PDFs
+
+### Dependencies
+
+- Added `pdf-to-png-converter` as optional dependency for PDF overlay rendering
+
 ## [0.1.0] - 2026-01-27
 
 ### Added

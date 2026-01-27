@@ -398,3 +398,152 @@ describe('getConfigService', () => {
     expect(service).toBeInstanceOf(ConfigService);
   });
 });
+
+describe('ConfigService API Key Storage', () => {
+  const mockConfigPath = '/tmp/test-config.json';
+  
+  const configWithApiKey: AppConfig = {
+    version: '1',
+    activeProfile: 'default',
+    profiles: {
+      default: {
+        endpoint: 'https://test.cognitiveservices.azure.com',
+        apiKey: 'test-api-key-12345',
+      },
+      nokey: {
+        endpoint: 'https://nokey.cognitiveservices.azure.com',
+      },
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetConfigService();
+  });
+
+  afterEach(() => {
+    resetConfigService();
+  });
+
+  describe('setProfile with apiKey', () => {
+    it('should_store_api_key_when_provided_in_options', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const service = new ConfigService(mockConfigPath);
+      const profile: ConfigProfile = {
+        endpoint: 'https://test.cognitiveservices.azure.com',
+      };
+
+      service.setProfile('myprofile', profile, { apiKey: 'my-secret-key' });
+
+      const { profile: savedProfile } = service.getActiveProfile();
+      expect(savedProfile.apiKey).toBe('my-secret-key');
+    });
+
+    it('should_not_store_api_key_when_options_not_provided', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const service = new ConfigService(mockConfigPath);
+      const profile: ConfigProfile = {
+        endpoint: 'https://test.cognitiveservices.azure.com',
+      };
+
+      service.setProfile('myprofile', profile);
+
+      const { profile: savedProfile } = service.getActiveProfile();
+      expect(savedProfile.apiKey).toBeUndefined();
+    });
+
+    it('should_remove_api_key_when_empty_string_provided', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+      const profile: ConfigProfile = {
+        endpoint: 'https://test.cognitiveservices.azure.com',
+      };
+
+      service.setProfile('default', profile, { apiKey: '' });
+
+      const { profile: savedProfile } = service.getActiveProfile();
+      expect(savedProfile.apiKey).toBeUndefined();
+    });
+  });
+
+  describe('getApiKey', () => {
+    it('should_return_api_key_when_configured_on_active_profile', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+      const apiKey = service.getApiKey();
+
+      expect(apiKey).toBe('test-api-key-12345');
+    });
+
+    it('should_return_undefined_when_no_api_key_on_active_profile', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      const configNoKey = { ...configWithApiKey, activeProfile: 'nokey' };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configNoKey));
+
+      const service = new ConfigService(mockConfigPath);
+      const apiKey = service.getApiKey();
+
+      expect(apiKey).toBeUndefined();
+    });
+
+    it('should_return_undefined_when_no_active_profile', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const service = new ConfigService(mockConfigPath);
+      const apiKey = service.getApiKey();
+
+      expect(apiKey).toBeUndefined();
+    });
+  });
+
+  describe('updateProfileApiKey', () => {
+    it('should_update_api_key_on_existing_profile', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+      service.updateProfileApiKey('default', 'new-api-key-67890');
+
+      const { profile } = service.getActiveProfile();
+      expect(profile.apiKey).toBe('new-api-key-67890');
+    });
+
+    it('should_remove_api_key_when_empty_string_provided', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+      service.updateProfileApiKey('default', '');
+
+      const { profile } = service.getActiveProfile();
+      expect(profile.apiKey).toBeUndefined();
+    });
+
+    it('should_throw_error_when_profile_not_found', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+
+      expect(() => service.updateProfileApiKey('nonexistent', 'key')).toThrow(CliError);
+    });
+
+    it('should_add_api_key_to_profile_without_one', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithApiKey));
+
+      const service = new ConfigService(mockConfigPath);
+      service.updateProfileApiKey('nokey', 'added-api-key');
+
+      service.useProfile('nokey');
+      const { profile } = service.getActiveProfile();
+      expect(profile.apiKey).toBe('added-api-key');
+    });
+  });
+});

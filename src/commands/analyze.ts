@@ -8,9 +8,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { getContentUnderstandingClient } from '../services/content-understanding.js';
-import { createJsonFormatter } from '../services/formatters/json.js';
 import { createTableFormatter } from '../services/formatters/table.js';
-import { renderOverlay, getOverlaySummary } from '../services/formatters/overlay.js';
+import { renderOverlay, renderPdfOverlayAllPages, getOverlaySummary } from '../services/formatters/overlay.js';
 import { createSpinner } from '../lib/progress.js';
 import { validateFilePath, validateUrl, validateSupportedFileType } from '../lib/validation.js';
 import { CliError, ErrorCodes } from '../lib/errors.js';
@@ -27,7 +26,7 @@ type OutputFormat = 'json' | 'table' | 'overlay';
 /**
  * Image formats supported by sharp for overlay rendering.
  */
-const OVERLAY_SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.bmp', '.gif', '.webp']);
+const OVERLAY_SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.bmp', '.gif', '.webp', '.pdf']);
 
 /**
  * MIME type mapping for supported file extensions.
@@ -118,85 +117,6 @@ function handleError(error: unknown): never {
   // Unknown error
   process.stderr.write(`Error: ${error instanceof Error ? error.message : String(error)}\n`);
   process.exit(7);
-}
-
-/**
- * Output format for JSON.
- */
-interface AnalyzeJsonOutput {
-  operationId: string;
-  status: string;
-  analyzerId: string;
-  createdAt: string;
-  contents: Array<{
-    kind: string;
-    mimeType: string;
-    markdown?: string;
-    pageRange?: string;
-    fields: Record<string, {
-      type: string;
-      value: string | number | boolean | null;
-      confidence?: number;
-    }>;
-    tableCount?: number;
-    figureCount?: number;
-  }>;
-  usage?: {
-    documentPagesStandard?: number;
-    tokens?: Record<string, number>;
-  };
-  warnings: Array<{ code: string; message: string }>;
-}
-
-/**
- * Converts analysis result to JSON output format.
- */
-function toJsonOutput(result: AnalysisResult): AnalyzeJsonOutput {
-  const output: AnalyzeJsonOutput = {
-    operationId: result.id,
-    status: result.status,
-    analyzerId: result.analyzerId,
-    createdAt: result.createdAt.toISOString(),
-    contents: (result.contents ?? []).map(content => {
-      const fieldsRecord: Record<string, { type: string; value: string | number | boolean | null; confidence?: number }> = {};
-      for (const [name, field] of Object.entries(content.fields)) {
-        const fieldEntry: { type: string; value: string | number | boolean | null; confidence?: number } = {
-          type: field.type,
-          value: field.valueString ?? field.valueNumber ?? field.valueBoolean ?? null,
-        };
-        if (field.confidence !== undefined) {
-          fieldEntry.confidence = field.confidence;
-        }
-        fieldsRecord[name] = fieldEntry;
-      }
-
-      const item: AnalyzeJsonOutput['contents'][number] = {
-        kind: content.kind,
-        mimeType: content.mimeType,
-        fields: fieldsRecord,
-      };
-      if (content.markdown !== undefined) {
-        item.markdown = content.markdown;
-      }
-      if (content.startPageNumber !== undefined && content.endPageNumber !== undefined) {
-        item.pageRange = `${content.startPageNumber}-${content.endPageNumber}`;
-      }
-      if (content.tables !== undefined) {
-        item.tableCount = content.tables.length;
-      }
-      if (content.figures !== undefined) {
-        item.figureCount = content.figures.length;
-      }
-      return item;
-    }),
-    warnings: result.warnings,
-  };
-
-  if (result.usage !== undefined) {
-    output.usage = result.usage;
-  }
-
-  return output;
 }
 
 /**
@@ -299,6 +219,8 @@ export function createAnalyzeCommand(): Command {
     .option('-f, --format <format>', 'Output format: json, table, overlay', 'table')
     .option('-o, --output <file>', 'Write output to file (required for overlay format)')
     .option('--force', 'Overwrite output file without confirmation')
+    .option('--dpi <number>', 'DPI for PDF rendering in overlay mode (default: 150)', '150')
+    .option('--page <number>', 'Specific page to render for PDF overlay (default: all pages)')
     .action(async (source: string, options: {
       analyzer: string;
       range?: string;
@@ -306,6 +228,8 @@ export function createAnalyzeCommand(): Command {
       format?: string;
       output?: string;
       force?: boolean;
+      dpi?: string;
+      page?: string;
     }) => {
       const parent = command.parent;
       const globalOpts = parent?.opts<{ json?: boolean; verbose?: boolean }>() ?? {};
@@ -376,6 +300,7 @@ export function createAnalyzeCommand(): Command {
       try {
         const client = getContentUnderstandingClient();
         let result: AnalysisResult;
+        let rawResult: unknown = undefined; // For raw JSON output
 
         if (isUrl(source)) {
           // URL-based analysis
@@ -402,14 +327,28 @@ export function createAnalyzeCommand(): Command {
 
           spinner.update('Waiting for analysis to complete...');
 
-          result = await client.pollForResult(operation, {
-            maxWaitMs: timeoutMs,
-            onProgress: (status) => {
-              if (globalOpts.verbose === true) {
-                spinner.update(`Analysis status: ${status}`);
-              }
-            },
-          });
+          if (format === 'json') {
+            // For JSON format, get raw API response
+            rawResult = await client.pollForResultRaw(operation, {
+              maxWaitMs: timeoutMs,
+              onProgress: (status) => {
+                if (globalOpts.verbose === true) {
+                  spinner.update(`Analysis status: ${status}`);
+                }
+              },
+            });
+            // Also get parsed result for internal use if needed
+            result = await client.getAnalysisResult(operation.operationId);
+          } else {
+            result = await client.pollForResult(operation, {
+              maxWaitMs: timeoutMs,
+              onProgress: (status) => {
+                if (globalOpts.verbose === true) {
+                  spinner.update(`Analysis status: ${status}`);
+                }
+              },
+            });
+          }
 
           spinner.succeed('Analysis complete');
         } else {
@@ -448,14 +387,28 @@ export function createAnalyzeCommand(): Command {
 
           spinner.update('Waiting for analysis to complete...');
 
-          result = await client.pollForResult(operation, {
-            maxWaitMs: timeoutMs,
-            onProgress: (status) => {
-              if (globalOpts.verbose === true) {
-                spinner.update(`Analysis status: ${status}`);
-              }
-            },
-          });
+          if (format === 'json') {
+            // For JSON format, get raw API response
+            rawResult = await client.pollForResultRaw(operation, {
+              maxWaitMs: timeoutMs,
+              onProgress: (status) => {
+                if (globalOpts.verbose === true) {
+                  spinner.update(`Analysis status: ${status}`);
+                }
+              },
+            });
+            // Also get parsed result for internal use if needed
+            result = await client.getAnalysisResult(operation.operationId);
+          } else {
+            result = await client.pollForResult(operation, {
+              maxWaitMs: timeoutMs,
+              onProgress: (status) => {
+                if (globalOpts.verbose === true) {
+                  spinner.update(`Analysis status: ${status}`);
+                }
+              },
+            });
+          }
 
           spinner.succeed('Analysis complete');
         }
@@ -463,8 +416,8 @@ export function createAnalyzeCommand(): Command {
         // Output result based on format
         switch (format) {
           case 'json': {
-            const jsonFormatter = createJsonFormatter<AnalyzeJsonOutput>();
-            const jsonOutput = jsonFormatter.format(toJsonOutput(result)) + '\n';
+            // Output raw API response directly (no transformation)
+            const jsonOutput = JSON.stringify(rawResult, null, 2) + '\n';
             if (options.output !== undefined) {
               fs.writeFileSync(options.output, jsonOutput);
               process.stdout.write(`Output written to: ${options.output}\n`);
@@ -475,7 +428,7 @@ export function createAnalyzeCommand(): Command {
           }
 
           case 'overlay': {
-            // Overlay requires the source to be an image file
+            // Overlay requires the source to be an image or PDF file
             if (isUrl(source)) {
               throw new CliError(
                 ErrorCodes.UNSUPPORTED_FILE_TYPE,
@@ -486,12 +439,49 @@ export function createAnalyzeCommand(): Command {
             }
 
             const absolutePath = path.resolve(source);
+            const ext = path.extname(absolutePath).toLowerCase();
+            const isPdf = ext === '.pdf';
+            const dpi = parseInt(options.dpi ?? '150', 10);
+            const pageNum = options.page !== undefined ? parseInt(options.page, 10) : undefined;
+
             spinner.start('Rendering overlay...');
 
             try {
-              const overlayResult = await renderOverlay(absolutePath, result);
-              fs.writeFileSync(options.output!, overlayResult.buffer);
-              spinner.succeed(`Overlay written to: ${options.output} (${overlayResult.boxCount} bounding boxes)`);
+              if (isPdf && pageNum === undefined) {
+                // Multi-page PDF: render all pages
+                const pdfResult = await renderPdfOverlayAllPages(absolutePath, result, { dpi });
+                
+                if (pdfResult.totalPages === 1) {
+                  // Single page PDF - write directly to output
+                  const page = pdfResult.pages[0];
+                  if (page !== undefined) {
+                    fs.writeFileSync(options.output!, page.buffer);
+                    spinner.succeed(`Overlay written to: ${options.output} (${page.boxCount} bounding boxes)`);
+                  }
+                } else {
+                  // Multi-page PDF - generate numbered output files
+                  const outputBase = options.output!;
+                  const outputExt = path.extname(outputBase);
+                  const outputName = outputBase.slice(0, -outputExt.length);
+                  
+                  let totalBoxes = 0;
+                  for (const page of pdfResult.pages) {
+                    const pageOutput = `${outputName}-${page.pageNumber}${outputExt}`;
+                    fs.writeFileSync(pageOutput, page.buffer);
+                    totalBoxes += page.boxCount;
+                  }
+                  spinner.succeed(`Overlay written to ${pdfResult.totalPages} files: ${outputName}-1${outputExt} to ${outputName}-${pdfResult.totalPages}${outputExt} (${totalBoxes} total bounding boxes)`);
+                }
+              } else {
+                // Single page (image or specific PDF page)
+                const overlayOpts: { dpi: number; pageNumber?: number } = { dpi };
+                if (pageNum !== undefined) {
+                  overlayOpts.pageNumber = pageNum;
+                }
+                const overlayResult = await renderOverlay(absolutePath, result, overlayOpts);
+                fs.writeFileSync(options.output!, overlayResult.buffer);
+                spinner.succeed(`Overlay written to: ${options.output} (${overlayResult.boxCount} bounding boxes)`);
+              }
             } catch (overlayError) {
               spinner.fail('Failed to render overlay');
               if (overlayError instanceof CliError) {

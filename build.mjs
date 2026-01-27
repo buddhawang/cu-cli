@@ -19,6 +19,9 @@ const buildOptions = {
   external: [
     // Native modules that can't be bundled
     'sharp',
+    // PDF rendering has native canvas dependency
+    'pdf-to-png-converter',
+    '@napi-rs/canvas',
     // Keep MSAL external to avoid bundling issues with native extensions
     '@azure/msal-node-extensions',
   ],

@@ -236,3 +236,77 @@ describe('getAuthService', () => {
     expect(service).toBeInstanceOf(AuthService);
   });
 });
+
+describe('AuthService.getQuickAuthStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTokenCache.getAllAccounts.mockResolvedValue([]);
+  });
+
+  it('should_return_hasCredentials_false_when_no_accounts_cached', async () => {
+    mockTokenCache.getAllAccounts.mockResolvedValue([]);
+
+    const authService = new AuthService();
+    const status = await authService.getQuickAuthStatus();
+
+    expect(status.hasCredentials).toBe(false);
+    expect(status.account).toBeNull();
+  });
+
+  it('should_return_hasCredentials_true_with_account_info_when_cached', async () => {
+    mockTokenCache.getAllAccounts.mockResolvedValue([mockAccountInfo]);
+
+    const authService = new AuthService();
+    const status = await authService.getQuickAuthStatus();
+
+    expect(status.hasCredentials).toBe(true);
+    expect(status.account).not.toBeNull();
+    expect(status.account?.email).toBe('user@example.com');
+    expect(status.account?.name).toBe('Test User');
+    expect(status.account?.tenantId).toBe('tenant-id-123');
+  });
+
+  it('should_not_make_network_calls_when_checking_status', async () => {
+    mockTokenCache.getAllAccounts.mockResolvedValue([mockAccountInfo]);
+
+    const authService = new AuthService();
+    await authService.getQuickAuthStatus();
+
+    // Should only check cache, not try to acquire tokens
+    expect(mockPcaInstance.acquireTokenSilent).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.getAuthState with needsRefresh', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should_set_needsRefresh_true_when_token_expires_within_5_minutes', async () => {
+    const soonExpiringResult = {
+      ...mockAuthResult,
+      expiresOn: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from now
+    };
+    mockTokenCache.getAllAccounts.mockResolvedValue([mockAccountInfo]);
+    mockPcaInstance.acquireTokenSilent.mockResolvedValue(soonExpiringResult);
+
+    const authService = new AuthService();
+    const state = await authService.getAuthState();
+
+    expect(state.needsRefresh).toBe(true);
+  });
+
+  it('should_set_needsRefresh_false_when_token_expires_after_5_minutes', async () => {
+    const laterExpiringResult = {
+      ...mockAuthResult,
+      expiresOn: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
+    };
+    mockTokenCache.getAllAccounts.mockResolvedValue([mockAccountInfo]);
+    mockPcaInstance.acquireTokenSilent.mockResolvedValue(laterExpiringResult);
+
+    const authService = new AuthService();
+    const state = await authService.getAuthState();
+
+    expect(state.needsRefresh).toBe(false);
+  });
+});

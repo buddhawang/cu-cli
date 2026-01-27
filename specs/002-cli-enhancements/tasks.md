@@ -44,16 +44,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Update `ConfigService.setProfile()` to accept and store `apiKey` in src/services/config.ts
-- [ ] T007 [US1] Add `--api-key` option to config set command in src/commands/config.ts
-- [ ] T008 [US1] Update `cu config show` to display masked API key status (e.g., `•••xyz`) in src/commands/config.ts
-- [ ] T009 [US1] Add `cu config unset api-key` subcommand to remove API key from profile in src/commands/config.ts
-- [ ] T010 [US1] Add `getApiKey()` method to `ConfigService` to retrieve API key from active profile in src/services/config.ts
-- [ ] T011 [US1] Modify `ContentUnderstandingClient.request()` to use `Ocp-Apim-Subscription-Key` header when API key present in src/services/content-understanding.ts
-- [ ] T012 [US1] Add API key priority logic: use API key if present, else fall back to Azure AD token in src/services/content-understanding.ts
-- [ ] T013 [US1] Add clear error messages for invalid API key (401 response) in src/services/content-understanding.ts
-- [ ] T014 [P] [US1] Add unit tests for API key storage in ConfigService in tests/unit/services/config.test.ts
-- [ ] T015 [P] [US1] Add contract tests for `cu config set --api-key` and `cu config unset api-key` in tests/contract/config.test.ts
+- [x] T006 [US1] Update `ConfigService.setProfile()` to accept and store `apiKey` in src/services/config.ts
+- [x] T007 [US1] Add `--api-key` option to config set command in src/commands/config.ts
+- [x] T008 [US1] Update `cu config show` to display masked API key status (e.g., `•••xyz`) in src/commands/config.ts
+- [x] T009 [US1] Add `cu config unset api-key` subcommand to remove API key from profile in src/commands/config.ts
+- [x] T010 [US1] Add `getApiKey()` method to `ConfigService` to retrieve API key from active profile in src/services/config.ts
+- [x] T011 [US1] Modify `ContentUnderstandingClient.request()` to use `Ocp-Apim-Subscription-Key` header when API key present in src/services/content-understanding.ts
+- [x] T012 [US1] Add API key priority logic: use API key if present, else fall back to Azure AD token in src/services/content-understanding.ts
+- [x] T013 [US1] Add clear error messages for invalid API key (401 response) in src/services/content-understanding.ts
+- [x] T014 [P] [US1] Add unit tests for API key storage in ConfigService in tests/unit/services/config.test.ts
+- [x] T015 [P] [US1] Add contract tests for `cu config set --api-key` and `cu config unset api-key` in tests/contract/config.test.ts
 
 **Checkpoint**: User Story 1 complete - API key authentication works independently
 
@@ -67,14 +67,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Add `getQuickAuthStatus()` function for fast cache inspection in src/services/auth.ts
-- [ ] T017 [US2] Extend `AuthService.getAuthState()` to include `needsRefresh` calculation (within 5 min of expiry) in src/services/auth.ts
-- [ ] T018 [US2] Create new `src/commands/status.ts` file with `cu status` command
-- [ ] T019 [US2] Implement human-readable status output (user, expiry, auth method, profile info) in src/commands/status.ts
-- [ ] T020 [US2] Implement JSON output for `cu status --json` in src/commands/status.ts
-- [ ] T021 [US2] Register status command in CLI entry point in src/index.ts
-- [ ] T022 [P] [US2] Add unit tests for `getQuickAuthStatus()` in tests/unit/services/auth.test.ts
-- [ ] T023 [P] [US2] Add contract tests for `cu status` command in tests/contract/status.test.ts
+- [x] T016 [US2] Add `getQuickAuthStatus()` function for fast cache inspection in src/services/auth.ts
+- [x] T017 [US2] Extend `AuthService.getAuthState()` to include `needsRefresh` calculation (within 5 min of expiry) in src/services/auth.ts
+- [x] T018 [US2] Create new `src/commands/status.ts` file with `cu status` command
+- [x] T019 [US2] Implement human-readable status output (user, expiry, auth method, profile info) in src/commands/status.ts
+- [x] T020 [US2] Implement JSON output for `cu status --json` in src/commands/status.ts
+- [x] T021 [US2] Register status command in CLI entry point in src/index.ts
+- [x] T022 [P] [US2] Add unit tests for `getQuickAuthStatus()` in tests/unit/services/auth.test.ts
+- [x] T023 [P] [US2] Add contract tests for `cu status` command in tests/contract/status.test.ts
 
 **Checkpoint**: User Story 2 complete - `cu status` works independently
 
@@ -88,10 +88,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Add `rawJson` option to `analyzeContent()` method signature in src/services/content-understanding.ts
-- [ ] T025 [US3] Modify `analyzeContent()` to return raw API response when `rawJson: true` in src/services/content-understanding.ts
-- [ ] T026 [US3] Update analyze command to pass `rawJson: true` for `--format json` in src/commands/analyze.ts
-- [ ] T027 [US3] Ensure raw JSON output goes to stdout without progress indicators in src/commands/analyze.ts
+- [x] T024 [US3] Add `rawJson` option to `analyzeContent()` method signature in src/services/content-understanding.ts
+- [x] T025 [US3] Modify `analyzeContent()` to return raw API response when `rawJson: true` in src/services/content-understanding.ts
+- [x] T026 [US3] Update analyze command to pass `rawJson: true` for `--format json` in src/commands/analyze.ts
+- [x] T027 [US3] Ensure raw JSON output goes to stdout without progress indicators in src/commands/analyze.ts
 - [ ] T028 [P] [US3] Add contract tests verifying raw JSON structure matches API in tests/contract/analyze.test.ts
 
 **Checkpoint**: User Story 3 complete - JSON output returns raw API response
@@ -106,19 +106,19 @@
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Create `src/lib/pdf-renderer.ts` with `PdfRenderOptions` and `PdfRenderResult` interfaces
-- [ ] T030 [US4] Implement `renderPdfPage()` function with lazy-loaded `pdf-to-png-converter` in src/lib/pdf-renderer.ts
-- [ ] T031 [US4] Implement `renderAllPdfPages()` function for multi-page PDFs in src/lib/pdf-renderer.ts
-- [ ] T032 [US4] Add `convertInchesToPixels()` function for coordinate conversion in src/services/formatters/overlay.ts
-- [ ] T033 [US4] Modify `renderOverlay()` to detect PDF input and render to image first in src/services/formatters/overlay.ts
-- [ ] T034 [US4] Apply coordinate conversion (inch → pixel) when source is PDF in src/services/formatters/overlay.ts
-- [ ] T035 [US4] Add `--dpi` option to analyze command for PDF rendering resolution in src/commands/analyze.ts
-- [ ] T036 [US4] Add `--page` option to analyze command for single-page PDF overlay in src/commands/analyze.ts
-- [ ] T037 [US4] Implement multi-page output naming (e.g., `result-1.png`, `result-2.png`) in src/commands/analyze.ts
-- [ ] T038 [US4] Add error handling for password-protected and corrupted PDFs in src/lib/pdf-renderer.ts
-- [ ] T039 [US4] Add helpful error message when `pdf-to-png-converter` is not installed in src/lib/pdf-renderer.ts
-- [ ] T040 [P] [US4] Add unit tests for PDF renderer in tests/unit/lib/pdf-renderer.test.ts
-- [ ] T041 [P] [US4] Add unit tests for coordinate conversion in tests/unit/services/formatters/overlay.test.ts
+- [x] T029 [US4] Create `src/lib/pdf-renderer.ts` with `PdfRenderOptions` and `PdfRenderResult` interfaces
+- [x] T030 [US4] Implement `renderPdfPage()` function with lazy-loaded `pdf-to-png-converter` in src/lib/pdf-renderer.ts
+- [x] T031 [US4] Implement `renderAllPdfPages()` function for multi-page PDFs in src/lib/pdf-renderer.ts
+- [x] T032 [US4] Add `convertInchesToPixels()` function for coordinate conversion in src/services/formatters/overlay.ts
+- [x] T033 [US4] Modify `renderOverlay()` to detect PDF input and render to image first in src/services/formatters/overlay.ts
+- [x] T034 [US4] Apply coordinate conversion (inch → pixel) when source is PDF in src/services/formatters/overlay.ts
+- [x] T035 [US4] Add `--dpi` option to analyze command for PDF rendering resolution in src/commands/analyze.ts
+- [x] T036 [US4] Add `--page` option to analyze command for single-page PDF overlay in src/commands/analyze.ts
+- [x] T037 [US4] Implement multi-page output naming (e.g., `result-1.png`, `result-2.png`) in src/commands/analyze.ts
+- [x] T038 [US4] Add error handling for password-protected and corrupted PDFs in src/lib/pdf-renderer.ts
+- [x] T039 [US4] Add helpful error message when `pdf-to-png-converter` is not installed in src/lib/pdf-renderer.ts
+- [x] T040 [P] [US4] Add unit tests for PDF renderer in tests/unit/lib/pdf-renderer.test.ts
+- [x] T041 [P] [US4] Add unit tests for coordinate conversion in tests/unit/services/formatters/overlay.test.ts
 - [ ] T042 [P] [US4] Add integration tests for PDF overlay workflow in tests/integration/pdf-overlay.test.ts
 
 **Checkpoint**: User Story 4 complete - PDF overlay rendering works independently
@@ -129,11 +129,11 @@
 
 **Purpose**: Documentation, cleanup, and validation
 
-- [ ] T043 [P] Update README.md with new features (API key, status command, PDF overlay)
-- [ ] T044 [P] Update CHANGELOG.md with 0.2.0 changes
-- [ ] T045 [P] Add `--help` examples for new options in all modified commands
+- [x] T043 [P] Update README.md with new features (API key, status command, PDF overlay)
+- [x] T044 [P] Update CHANGELOG.md with 0.2.0 changes
+- [x] T045 [P] Add `--help` examples for new options in all modified commands
 - [ ] T046 Run quickstart.md validation steps to verify all features work end-to-end
-- [ ] T047 Run full test suite and verify >80% coverage on new code
+- [x] T047 Run full test suite and verify >80% coverage on new code
 
 ---
 

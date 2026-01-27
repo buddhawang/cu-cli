@@ -1,10 +1,12 @@
 /**
  * Overlay formatter for rendering bounding boxes on images.
  * Uses sharp library (lazy loaded) for image manipulation.
+ * Supports PDF input through pdf-to-png-converter.
  */
 
 import type { AnalysisResult, BoundingBox } from '../../models/analysis-result.js';
 import { CliError, ErrorCodes } from '../../lib/errors.js';
+import * as path from 'path';
 
 /**
  * Color palette for different field types.
@@ -34,6 +36,8 @@ export interface OverlayOptions {
   fontSize?: number;
   /** Page number to render (1-indexed, undefined = all pages) */
   pageNumber?: number;
+  /** DPI for PDF rendering (default: 150) */
+  dpi?: number;
 }
 
 /**
@@ -46,6 +50,42 @@ export interface OverlayResult {
   mimeType: string;
   /** Number of bounding boxes drawn */
   boxCount: number;
+  /** Page number that was rendered (1-indexed) */
+  pageNumber?: number;
+}
+
+/**
+ * Result of multi-page overlay rendering.
+ */
+export interface MultiPageOverlayResult {
+  /** Array of rendered pages */
+  pages: OverlayResult[];
+  /** Total number of pages */
+  totalPages: number;
+}
+
+/**
+ * Converts inches to pixels at a given DPI.
+ * PDF coordinates from Azure CU are typically in inches.
+ * @param inches - Value in inches
+ * @param dpi - Dots per inch (default: 150)
+ * @returns Value in pixels
+ */
+export function convertInchesToPixels(inches: number, dpi: number = 150): number {
+  return inches * dpi;
+}
+
+/**
+ * Scales bounding box coordinates from inches to pixels.
+ * @param box - Bounding box with coordinates in inches
+ * @param dpi - Target DPI for conversion
+ * @returns Bounding box with coordinates in pixels
+ */
+function scaleBoundingBox(box: BoundingBox, dpi: number): BoundingBox {
+  return {
+    pageNumber: box.pageNumber,
+    polygon: box.polygon.map(coord => convertInchesToPixels(coord, dpi)),
+  };
 }
 
 /**
@@ -267,17 +307,26 @@ interface SharpInstance {
   toBuffer(): Promise<Buffer>;
 }
 
-type SharpFunction = (input: string) => SharpInstance;
+type SharpFunction = (input: string | Buffer) => SharpInstance;
 
 /**
  * Renders overlay on an image using sharp.
  * Sharp is loaded lazily to avoid startup performance impact.
+ * Supports both image files and PDF files.
  */
 export async function renderOverlay(
   imagePath: string,
   result: AnalysisResult,
   options: OverlayOptions = {}
 ): Promise<OverlayResult> {
+  const ext = path.extname(imagePath).toLowerCase();
+  const isPdf = ext === '.pdf';
+
+  // For PDF files, render the page to image first
+  if (isPdf) {
+    return renderPdfOverlay(imagePath, result, options);
+  }
+
   // Lazy load sharp
   let sharp: SharpFunction;
   try {
@@ -340,6 +389,200 @@ export async function renderOverlay(
     buffer: composited,
     mimeType: 'image/png',
     boxCount: boxes.length,
+  };
+}
+
+/**
+ * Renders overlay on a PDF page.
+ * Converts the PDF page to image first, then applies overlay.
+ */
+async function renderPdfOverlay(
+  pdfPath: string,
+  result: AnalysisResult,
+  options: OverlayOptions = {}
+): Promise<OverlayResult> {
+  const dpi = options.dpi ?? 150;
+  const pageNumber = options.pageNumber ?? 1;
+
+  // Lazy load pdf-renderer
+  let renderPdfPage: typeof import('../../lib/pdf-renderer.js').renderPdfPage;
+  try {
+    const pdfRenderer = await import('../../lib/pdf-renderer.js');
+    renderPdfPage = pdfRenderer.renderPdfPage;
+  } catch {
+    throw new CliError(
+      ErrorCodes.UNSUPPORTED_FILE_TYPE,
+      'PDF rendering not available',
+      'The pdf-to-png-converter package is not installed',
+      'Install optional dependency: npm install pdf-to-png-converter'
+    );
+  }
+
+  // Render the PDF page to image
+  const pageResult = await renderPdfPage({
+    pdfPath,
+    dpi,
+    pageNumber,
+  });
+
+  // Lazy load sharp
+  let sharp: SharpFunction;
+  try {
+    const sharpModule = await import('sharp') as { default: SharpFunction };
+    sharp = sharpModule.default;
+  } catch {
+    throw new CliError(
+      ErrorCodes.UNSUPPORTED_FILE_TYPE,
+      'Sharp library not available',
+      'The sharp image processing library is required for overlay output',
+      'Install sharp: npm install sharp'
+    );
+  }
+
+  const width = pageResult.width;
+  const height = pageResult.height;
+
+  // Extract bounding boxes for the specified page
+  // Scale coordinates from inches to pixels since PDF coordinates are in inches
+  const rawBoxes = extractBoundingBoxes(result, pageNumber);
+  const boxes = rawBoxes.map(({ box, label, type }) => ({
+    box: scaleBoundingBox(box, dpi),
+    label,
+    type,
+  }));
+
+  if (boxes.length === 0) {
+    // No boxes to draw, return rendered page
+    return {
+      buffer: pageResult.buffer,
+      mimeType: 'image/png',
+      boxCount: 0,
+      pageNumber,
+    };
+  }
+
+  // Create SVG overlay with scaled coordinates
+  const svg = createSvgOverlay(width, height, boxes, options);
+
+  // Composite the overlay onto the rendered page
+  const image = sharp(pageResult.buffer);
+  const composited = await image
+    .composite([
+      {
+        input: Buffer.from(svg),
+        top: 0,
+        left: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  return {
+    buffer: composited,
+    mimeType: 'image/png',
+    boxCount: boxes.length,
+    pageNumber,
+  };
+}
+
+/**
+ * Renders overlay on all pages of a PDF.
+ * Returns an array of rendered page buffers.
+ */
+export async function renderPdfOverlayAllPages(
+  pdfPath: string,
+  result: AnalysisResult,
+  options: OverlayOptions = {}
+): Promise<MultiPageOverlayResult> {
+  const dpi = options.dpi ?? 150;
+
+  // Lazy load pdf-renderer
+  let renderAllPdfPages: typeof import('../../lib/pdf-renderer.js').renderAllPdfPages;
+  try {
+    const pdfRenderer = await import('../../lib/pdf-renderer.js');
+    renderAllPdfPages = pdfRenderer.renderAllPdfPages;
+  } catch {
+    throw new CliError(
+      ErrorCodes.UNSUPPORTED_FILE_TYPE,
+      'PDF rendering not available',
+      'The pdf-to-png-converter package is not installed',
+      'Install optional dependency: npm install pdf-to-png-converter'
+    );
+  }
+
+  // Render all PDF pages
+  const pagesResult = await renderAllPdfPages({
+    pdfPath,
+    dpi,
+  });
+
+  // Lazy load sharp
+  let sharp: SharpFunction;
+  try {
+    const sharpModule = await import('sharp') as { default: SharpFunction };
+    sharp = sharpModule.default;
+  } catch {
+    throw new CliError(
+      ErrorCodes.UNSUPPORTED_FILE_TYPE,
+      'Sharp library not available',
+      'The sharp image processing library is required for overlay output',
+      'Install sharp: npm install sharp'
+    );
+  }
+
+  const results: OverlayResult[] = [];
+
+  for (const page of pagesResult.pages) {
+    const width = page.width;
+    const height = page.height;
+    const pageNumber = page.pageNumber;
+
+    // Extract and scale bounding boxes for this page
+    const rawBoxes = extractBoundingBoxes(result, pageNumber);
+    const boxes = rawBoxes.map(({ box, label, type }) => ({
+      box: scaleBoundingBox(box, dpi),
+      label,
+      type,
+    }));
+
+    if (boxes.length === 0) {
+      // No boxes to draw, return rendered page as-is
+      results.push({
+        buffer: page.buffer,
+        mimeType: 'image/png',
+        boxCount: 0,
+        pageNumber,
+      });
+      continue;
+    }
+
+    // Create SVG overlay with scaled coordinates
+    const svg = createSvgOverlay(width, height, boxes, options);
+
+    // Composite the overlay onto the rendered page
+    const image = sharp(page.buffer);
+    const composited = await image
+      .composite([
+        {
+          input: Buffer.from(svg),
+          top: 0,
+          left: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    results.push({
+      buffer: composited,
+      mimeType: 'image/png',
+      boxCount: boxes.length,
+      pageNumber,
+    });
+  }
+
+  return {
+    pages: results,
+    totalPages: pagesResult.totalPages,
   };
 }
 

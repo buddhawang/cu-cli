@@ -5,10 +5,12 @@ A command-line interface for Azure Content Understanding, enabling document anal
 ## Features
 
 - 🔐 **Azure AD Authentication** - Secure sign-in with token caching
+- 🔑 **API Key Support** - Alternative authentication for CI/CD and headless environments
 - ⚙️ **Multi-profile Configuration** - Manage multiple Azure CU endpoints
+- 📊 **Status Dashboard** - Quick view of authentication and configuration status
 - 🔍 **Analyzer Discovery** - List and inspect available analyzers
 - 📄 **Document Analysis** - Extract structured data from documents
-- 🖼️ **Visual Overlays** - Generate annotated images with bounding boxes
+- 🖼️ **Visual Overlays** - Generate annotated images with bounding boxes (supports PDF!)
 - 📦 **Model Defaults** - Configure model-to-deployment mappings
 
 ## Prerequisites
@@ -79,15 +81,18 @@ cu analyzer show <analyzer-id>
 | `cu login` | Sign in to Azure using browser-based authentication |
 | `cu logout` | Sign out and clear cached credentials |
 | `cu whoami` | Display current authenticated identity |
+| `cu status` | Display authentication and configuration status |
 
 ### Configuration
 
 | Command | Description |
 |---------|-------------|
 | `cu config set --endpoint <url>` | Set the Azure CU endpoint URL |
+| `cu config set --api-key <key>` | Set API key for authentication |
 | `cu config show` | Display current configuration |
 | `cu config list` | List all configuration profiles |
 | `cu config use <profile>` | Switch to a different profile |
+| `cu config unset api-key` | Remove API key from profile |
 
 ### Analyzers
 
@@ -109,18 +114,26 @@ cu analyzer show <analyzer-id>
 - `--output <file>` - Write output to file
 - `--force` - Overwrite existing output file
 - `--pages <range>` - Page range (e.g., `1-3`)
+- `--dpi <number>` - DPI for PDF rendering in overlay mode (default: 150)
+- `--page <number>` - Specific page to render for PDF overlay
 
 **Examples:**
 
 ```bash
-# Basic analysis with JSON output
+# Basic analysis with JSON output (raw API response)
 cu analyze ./contract.pdf --json
 
 # Extract with specific analyzer
 cu analyze ./invoice.pdf --analyzer prebuilt-invoice
 
-# Generate visualization overlay
+# Generate visualization overlay on an image
 cu analyze ./form.png --format overlay --output result.png
+
+# Generate visualization overlay on a PDF
+cu analyze ./invoice.pdf --format overlay --output result.png
+
+# Render specific PDF page at high DPI
+cu analyze ./document.pdf --format overlay --output page2.png --page 2 --dpi 300
 
 # Analyze specific pages
 cu analyze ./document.pdf --pages 1-5

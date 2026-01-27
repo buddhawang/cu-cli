@@ -23,9 +23,9 @@ import {
   type ExtractedField,
   type DetectedTable,
   type DetectedFigure,
-  type BoundingBox,
-  type TextSpan,
   type TableCell,
+  type AnalysisUsage,
+  type AnalysisError,
   type OperationStatus,
   type AnalysisOperationApiResponse,
   type AnalyzedContentApiResponse,
@@ -484,7 +484,6 @@ export class ContentUnderstandingClient {
 
     while (Date.now() - startTime < maxWaitMs) {
       const result = await this.getAnalysisResult(operation.operationId);
-
       onProgress?.(result.status);
 
       if (result.status === 'succeeded') {
@@ -567,19 +566,28 @@ export class ContentUnderstandingClient {
     }
 
     if (response.result?.usage !== undefined) {
-      result.usage = {
-        documentPagesStandard: response.result.usage.documentPagesStandard,
-        tokens: response.result.usage.tokens,
-      };
+      const usage: AnalysisUsage = {};
+      if (response.result.usage.documentPagesStandard !== undefined) {
+        usage.documentPagesStandard = response.result.usage.documentPagesStandard;
+      }
+      if (response.result.usage.tokens !== undefined) {
+        usage.tokens = response.result.usage.tokens;
+      }
+      result.usage = usage;
     }
 
     if (response.error !== undefined) {
-      result.error = {
+      const error: AnalysisError = {
         code: response.error.code,
         message: response.error.message,
-        target: response.error.target,
-        details: response.error.details,
       };
+      if (response.error.target !== undefined) {
+        error.target = response.error.target;
+      }
+      if (response.error.details !== undefined) {
+        error.details = response.error.details;
+      }
+      result.error = error;
     }
 
     return result;
@@ -587,13 +595,20 @@ export class ContentUnderstandingClient {
 
   /**
    * Parses operation status from API response.
+   * Note: Azure API returns PascalCase (e.g., "Succeeded", "Running")
+   * but we normalize to camelCase for consistency.
    */
   private parseOperationStatus(status: string): OperationStatus {
-    const validStatuses: OperationStatus[] = ['notStarted', 'running', 'succeeded', 'failed', 'canceled'];
-    if (validStatuses.includes(status as OperationStatus)) {
-      return status as OperationStatus;
-    }
-    return 'running'; // Default to running for unknown statuses
+    const normalized = status.toLowerCase();
+    const statusMap: Record<string, OperationStatus> = {
+      'notstarted': 'notStarted',
+      'running': 'running',
+      'succeeded': 'succeeded',
+      'failed': 'failed',
+      'canceled': 'canceled',
+      'cancelled': 'canceled', // Handle British spelling
+    };
+    return statusMap[normalized] ?? 'running';
   }
 
   /**
@@ -603,11 +618,18 @@ export class ContentUnderstandingClient {
     const result: AnalyzedContent = {
       kind: this.parseContentKind(content.kind) ?? 'document',
       mimeType: content.mimeType,
-      markdown: content.markdown,
-      startPageNumber: content.startPageNumber,
-      endPageNumber: content.endPageNumber,
       fields: {},
     };
+
+    if (content.markdown !== undefined) {
+      result.markdown = content.markdown;
+    }
+    if (content.startPageNumber !== undefined) {
+      result.startPageNumber = content.startPageNumber;
+    }
+    if (content.endPageNumber !== undefined) {
+      result.endPageNumber = content.endPageNumber;
+    }
 
     if (content.fields !== undefined && content.fields !== null) {
       for (const [name, field] of Object.entries(content.fields)) {
@@ -685,14 +707,23 @@ export class ContentUnderstandingClient {
     const result: DetectedTable = {
       rowCount: table.rowCount,
       columnCount: table.columnCount,
-      cells: table.cells.map(c => ({
-        rowIndex: c.rowIndex,
-        columnIndex: c.columnIndex,
-        rowSpan: c.rowSpan,
-        columnSpan: c.columnSpan,
-        content: c.content,
-        isHeader: c.isHeader,
-      })),
+      cells: table.cells.map(c => {
+        const cell: TableCell = {
+          rowIndex: c.rowIndex,
+          columnIndex: c.columnIndex,
+          content: c.content,
+        };
+        if (c.rowSpan !== undefined) {
+          cell.rowSpan = c.rowSpan;
+        }
+        if (c.columnSpan !== undefined) {
+          cell.columnSpan = c.columnSpan;
+        }
+        if (c.isHeader !== undefined) {
+          cell.isHeader = c.isHeader;
+        }
+        return cell;
+      }),
     };
 
     if (table.boundingRegions !== undefined) {
@@ -711,8 +742,11 @@ export class ContentUnderstandingClient {
   private parseDetectedFigure(figure: DetectedFigureApiResponse): DetectedFigure {
     const result: DetectedFigure = {
       id: figure.id,
-      caption: figure.caption,
     };
+
+    if (figure.caption !== undefined) {
+      result.caption = figure.caption;
+    }
 
     if (figure.boundingRegions !== undefined) {
       result.boundingRegions = figure.boundingRegions.map(r => ({

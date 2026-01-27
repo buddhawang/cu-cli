@@ -16,7 +16,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execSync, type ExecSyncOptionsWithStringEncoding } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as os from 'node:os';
@@ -29,6 +29,20 @@ const CLI_PATH = resolve(__dirname, '../../dist/cu.cjs');
 
 // Check if integration tests should run
 const RUN_INTEGRATION = process.env['CU_RUN_INTEGRATION_TESTS'] === '1';
+
+/**
+ * Shape of the analyze JSON output.
+ */
+interface AnalyzeJsonOutput {
+  status: string;
+  analyzerId: string;
+  contents?: Array<{
+    fields?: Record<string, unknown>;
+    startPageNumber?: number;
+    endPageNumber?: number;
+  }>;
+  error?: unknown;
+}
 
 /**
  * Executes the CLI with given arguments and returns output.
@@ -62,13 +76,14 @@ describe('Analyze Workflow Integration', () => {
   });
 
   describe.skipIf(!RUN_INTEGRATION)('End-to-end analysis', () => {
-    it('should_analyze_sample_document_with_prebuilt_analyzer', async () => {
+    it('should_analyze_sample_document_with_prebuilt_analyzer', () => {
       // This test requires a valid sample document
       // Create a simple text-based PDF for testing
       const sampleDoc = join(os.tmpdir(), 'cu-test-sample.pdf');
       
       // Skip if no sample document available
       if (!existsSync(sampleDoc)) {
+        // eslint-disable-next-line no-console
         console.log('Skipping: No sample document available at', sampleDoc);
         return;
       }
@@ -77,17 +92,18 @@ describe('Analyze Workflow Integration', () => {
 
       expect(result.exitCode).toBe(0);
       
-      const output = JSON.parse(result.stdout);
+      const output = JSON.parse(result.stdout) as AnalyzeJsonOutput;
       expect(output.status).toBe('succeeded');
       expect(output.analyzerId).toBe('prebuilt-document');
       expect(output.contents).toBeDefined();
     });
 
-    it('should_extract_fields_from_invoice', async () => {
+    it('should_extract_fields_from_invoice', () => {
       // This test requires a sample invoice
       const sampleInvoice = join(os.tmpdir(), 'cu-test-invoice.pdf');
       
       if (!existsSync(sampleInvoice)) {
+        // eslint-disable-next-line no-console
         console.log('Skipping: No sample invoice available at', sampleInvoice);
         return;
       }
@@ -96,11 +112,12 @@ describe('Analyze Workflow Integration', () => {
 
       expect(result.exitCode).toBe(0);
       
-      const output = JSON.parse(result.stdout);
+      const output = JSON.parse(result.stdout) as AnalyzeJsonOutput;
       expect(output.status).toBe('succeeded');
       
       // Verify expected invoice fields
-      const fields = output.contents?.[0]?.fields ?? {};
+      const content = output.contents?.[0];
+      const fields = content?.fields ?? {};
       // Invoice analyzers typically extract these fields
       const expectedFields = ['VendorName', 'InvoiceTotal', 'InvoiceDate'];
       const foundFields = Object.keys(fields);
@@ -110,7 +127,7 @@ describe('Analyze Workflow Integration', () => {
       expect(hasExpectedFields).toBe(true);
     });
 
-    it('should_handle_url_analysis', async () => {
+    it('should_handle_url_analysis', () => {
       // Use a publicly accessible test document URL
       const testUrl = 'https://raw.githubusercontent.com/Azure-Samples/cognitive-services-REST-api-samples/master/curl/form-recognizer/sample-layout.pdf';
 
@@ -118,7 +135,7 @@ describe('Analyze Workflow Integration', () => {
 
       // This may fail if the URL is not accessible or endpoint not configured
       if (result.exitCode === 0) {
-        const output = JSON.parse(result.stdout);
+        const output = JSON.parse(result.stdout) as AnalyzeJsonOutput;
         expect(output.status).toBe('succeeded');
         expect(output.contents).toBeDefined();
       } else {
@@ -127,10 +144,11 @@ describe('Analyze Workflow Integration', () => {
       }
     });
 
-    it('should_respect_page_range_option', async () => {
+    it('should_respect_page_range_option', () => {
       const sampleDoc = join(os.tmpdir(), 'cu-test-multipage.pdf');
       
       if (!existsSync(sampleDoc)) {
+        // eslint-disable-next-line no-console
         console.log('Skipping: No sample multipage document available');
         return;
       }
@@ -138,7 +156,7 @@ describe('Analyze Workflow Integration', () => {
       const result = runCli(`analyze "${sampleDoc}" --analyzer prebuilt-document --range 1-2 --json`);
 
       if (result.exitCode === 0) {
-        const output = JSON.parse(result.stdout);
+        const output = JSON.parse(result.stdout) as AnalyzeJsonOutput;
         const content = output.contents?.[0];
         
         if (content?.startPageNumber !== undefined) {
@@ -150,10 +168,11 @@ describe('Analyze Workflow Integration', () => {
   });
 
   describe.skipIf(!RUN_INTEGRATION)('Error handling', () => {
-    it('should_fail_gracefully_for_invalid_analyzer', async () => {
+    it('should_fail_gracefully_for_invalid_analyzer', () => {
       const sampleDoc = join(os.tmpdir(), 'cu-test-sample.pdf');
       
       if (!existsSync(sampleDoc)) {
+        // eslint-disable-next-line no-console
         console.log('Skipping: No sample document available');
         return;
       }
@@ -164,7 +183,7 @@ describe('Analyze Workflow Integration', () => {
       
       // Error should be in JSON format when --json flag used
       try {
-        const output = JSON.parse(result.stdout);
+        const output = JSON.parse(result.stdout) as AnalyzeJsonOutput;
         expect(output.error).toBeDefined();
       } catch {
         // Or plain error in stderr
@@ -172,10 +191,11 @@ describe('Analyze Workflow Integration', () => {
       }
     });
 
-    it('should_timeout_appropriately', async () => {
+    it('should_timeout_appropriately', () => {
       const sampleDoc = join(os.tmpdir(), 'cu-test-sample.pdf');
       
       if (!existsSync(sampleDoc)) {
+        // eslint-disable-next-line no-console
         console.log('Skipping: No sample document available');
         return;
       }

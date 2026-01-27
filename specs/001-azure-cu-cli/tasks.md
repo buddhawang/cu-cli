@@ -170,25 +170,21 @@
 
 ## Phase 7: User Story 5 - Render Human-Friendly Output (Priority: P3)
 
-**Goal**: Provide Markdown and image overlay output formats for analysis results
+**Goal**: Provide image overlay output format for analysis results with bounding box visualization
 
-**Independent Test**: Run `cu analyze ./sample.pdf --format markdown` to see formatted output
+**Independent Test**: Run `cu analyze ./sample.pdf --format overlay --output result.png` to see visualization
 
 ### Implementation for User Story 5
 
-- [ ] T078 [P] [US5] Create markdown formatter in src/services/formatters/markdown.ts
-- [ ] T079 [US5] Implement field-to-markdown rendering in src/services/formatters/markdown.ts
-- [ ] T080 [US5] Implement table-to-markdown rendering in src/services/formatters/markdown.ts
-- [ ] T081 [US5] Create overlay formatter in src/services/formatters/overlay.ts (lazy load sharp)
-- [ ] T082 [US5] Implement bounding box drawing in src/services/formatters/overlay.ts
-- [ ] T083 [US5] Implement output file writing with --output flag in src/commands/analyze.ts
-- [ ] T084 [US5] Implement file overwrite confirmation (--force) in src/commands/analyze.ts
-- [ ] T085 [US5] Add --format option (json/table/markdown/overlay) to analyze command
-- [ ] T086 [US5] Unit test for markdown formatter in tests/unit/services/formatters/markdown.test.ts
-- [ ] T087 [US5] Unit test for overlay formatter in tests/unit/services/formatters/overlay.test.ts
-- [ ] T088 [US5] Contract test for cu analyze --format options in tests/contract/analyze-formats.test.ts
+- [ ] T078 [P] [US5] Create overlay formatter in src/services/formatters/overlay.ts (lazy load sharp)
+- [ ] T079 [US5] Implement bounding box drawing in src/services/formatters/overlay.ts
+- [ ] T080 [US5] Implement output file writing with --output flag in src/commands/analyze.ts
+- [ ] T081 [US5] Implement file overwrite confirmation (--force) in src/commands/analyze.ts
+- [ ] T082 [US5] Add --format option (json/table/overlay) to analyze command
+- [ ] T083 [US5] Unit test for overlay formatter in tests/unit/services/formatters/overlay.test.ts
+- [ ] T084 [US5] Contract test for cu analyze --format options in tests/contract/analyze-formats.test.ts
 
-**Checkpoint**: User Story 5 complete - All output formats work. Users can generate reports and visualizations.
+**Checkpoint**: User Story 5 complete - Overlay output format works. Users can generate visualizations.
 
 ---
 
@@ -196,27 +192,26 @@
 
 **Goal**: Deploy, list, and manage custom models on Azure AI resources
 
-**Independent Test**: Run `cu model list` to see deployed models, `cu model deploy` to add a new model
+**Independent Test**: Run `cu deployment list` to see deployed models, `cu deployment set` to add a new model
 
 ### Implementation for User Story 6
 
-- [ ] T089 [P] [US6] Create CustomModel interface in src/models/model.ts
-- [ ] T090 [P] [US6] Create DeploymentStatus type in src/models/model.ts
-- [ ] T091 [P] [US6] Create ModelList interface in src/models/model.ts
-- [ ] T092 [US6] Create ModelManager service in src/services/model-manager.ts
-- [ ] T093 [US6] Implement listModels in src/services/model-manager.ts
-- [ ] T094 [US6] Implement getModel in src/services/model-manager.ts
-- [ ] T095 [US6] Implement deployModel in src/services/model-manager.ts
-- [ ] T096 [US6] Implement deleteModel in src/services/model-manager.ts
-- [ ] T097 [US6] Implement deployment polling with progress in src/services/model-manager.ts
-- [ ] T098 [US6] Create model list command handler in src/commands/model.ts
-- [ ] T099 [US6] Create model show command handler in src/commands/model.ts
-- [ ] T100 [US6] Create model deploy command handler in src/commands/model.ts
-- [ ] T101 [US6] Create model delete command handler in src/commands/model.ts
-- [ ] T102 [US6] Implement delete confirmation prompt in src/commands/model.ts
-- [ ] T103 [US6] Register model commands in src/index.ts
-- [ ] T104 [US6] Unit test for ModelManager in tests/unit/services/model-manager.test.ts
-- [ ] T105 [US6] Contract test for cu model list/show/deploy/delete in tests/contract/model.test.ts
+- [ ] T085 [P] [US6] Create Deployment interface in src/models/deployment.ts
+- [ ] T086 [P] [US6] Create DeploymentStatus type in src/models/deployment.ts
+- [ ] T087 [P] [US6] Create DeploymentList interface in src/models/deployment.ts
+- [ ] T088 [US6] Create DeploymentManager service in src/services/deployment-manager.ts
+- [ ] T089 [US6] Implement listDeployments in src/services/deployment-manager.ts
+- [ ] T090 [US6] Implement getDeployment in src/services/deployment-manager.ts
+- [ ] T091 [US6] Implement setDeployment (create/update) in src/services/deployment-manager.ts
+- [ ] T092 [US6] Implement removeDeployment in src/services/deployment-manager.ts
+- [ ] T093 [US6] Implement deployment polling with progress in src/services/deployment-manager.ts
+- [ ] T094 [US6] Create deployment list command handler in src/commands/deployment.ts
+- [ ] T095 [US6] Create deployment set command handler in src/commands/deployment.ts
+- [ ] T096 [US6] Create deployment remove command handler in src/commands/deployment.ts
+- [ ] T097 [US6] Implement remove confirmation prompt in src/commands/deployment.ts
+- [ ] T098 [US6] Register deployment commands in src/index.ts
+- [ ] T099 [US6] Unit test for DeploymentManager in tests/unit/services/deployment-manager.test.ts
+- [ ] T100 [US6] Contract test for cu deployment list/set/remove in tests/contract/deployment.test.ts
 
 **Checkpoint**: User Story 6 complete - Full BYOC model lifecycle management available.
 
@@ -226,15 +221,15 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T106 [P] Create README.md with installation and usage instructions
-- [ ] T107 [P] Create CHANGELOG.md following Keep a Changelog format
-- [ ] T108 Add global --profile option to all commands in src/index.ts
-- [ ] T109 Add global --verbose option for debug output in src/index.ts
-- [ ] T110 Implement SIGINT (Ctrl+C) graceful shutdown in src/index.ts
-- [ ] T111 Add startup time benchmark test in tests/integration/performance.test.ts
-- [ ] T112 Verify all commands work with --json flag in tests/contract/json-output.test.ts
-- [ ] T113 [P] Add npm prepublishOnly script for production build
-- [ ] T114 Run quickstart.md validation (build, lint, test, benchmark)
+- [ ] T101 [P] Create README.md with installation and usage instructions
+- [ ] T102 [P] Create CHANGELOG.md following Keep a Changelog format
+- [ ] T103 Add global --profile option to all commands in src/index.ts
+- [ ] T104 Add global --verbose option for debug output in src/index.ts
+- [ ] T105 Implement SIGINT (Ctrl+C) graceful shutdown in src/index.ts
+- [ ] T106 Add startup time benchmark test in tests/integration/performance.test.ts
+- [ ] T107 Verify all commands work with --json flag in tests/contract/json-output.test.ts
+- [ ] T108 [P] Add npm prepublishOnly script for production build
+- [ ] T109 Run quickstart.md validation (build, lint, test, benchmark)
 
 ---
 
@@ -317,7 +312,7 @@ Phase 9 (Polish) ────────────┴────────
 
 ### Advanced Features (Add User Story 6)
 
-14. Complete Phase 8: User Story 6 (Models)
+14. Complete Phase 8: User Story 6 (Deployments)
 15. Complete Phase 9: Polish
 16. **VALIDATE**: Full feature set working
 17. Final release
@@ -328,17 +323,17 @@ Phase 9 (Polish) ────────────┴────────
 
 | Metric | Value |
 |--------|-------|
-| Total Tasks | 114 |
+| Total Tasks | 109 |
 | Setup Phase | 9 tasks |
 | Foundational Phase | 11 tasks |
 | User Story 1 (Auth) | 14 tasks |
 | User Story 2 (Config) | 15 tasks |
 | User Story 3 (Analyzers) | 12 tasks |
 | User Story 4 (Analyze) | 16 tasks |
-| User Story 5 (Formats) | 11 tasks |
-| User Story 6 (Models) | 17 tasks |
+| User Story 5 (Formats) | 7 tasks |
+| User Story 6 (Deployments) | 16 tasks |
 | Polish Phase | 9 tasks |
-| Parallel Opportunities | 36 tasks marked [P] |
+| Parallel Opportunities | 34 tasks marked [P] |
 
 ---
 
@@ -348,4 +343,4 @@ Phase 9 (Polish) ────────────┴────────
 - Tests are integrated into each user story phase (Constitution compliance)
 - Each checkpoint is a deployable increment
 - MVP achievable with Phases 1-4 only (34 tasks)
-- Full feature set requires all phases (114 tasks)
+- Full feature set requires all phases (109 tasks)

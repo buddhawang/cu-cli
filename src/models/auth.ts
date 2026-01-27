@@ -22,6 +22,11 @@ export interface UserIdentity {
 }
 
 /**
+ * Authentication method in use.
+ */
+export type AuthMethod = 'azure-ad' | 'api-key' | 'none';
+
+/**
  * Authentication state for the current session.
  */
 export interface AuthState {
@@ -33,6 +38,12 @@ export interface AuthState {
 
   /** Token expiration time (null if not authenticated) */
   expiresAt: Date | null;
+
+  /** Whether authentication is via API key (no expiry) */
+  isApiKey?: boolean;
+
+  /** Whether token needs refresh soon (within 5 minutes) */
+  needsRefresh?: boolean;
 }
 
 /**

@@ -28,9 +28,9 @@
 
 **⚠️ CRITICAL**: These must complete before user story implementation
 
-- [ ] T003 Extend `ConfigProfile` interface with optional `apiKey` field in src/models/config.ts
-- [ ] T004 [P] Extend `AuthState` interface with `isApiKey` and `needsRefresh` fields in src/models/auth.ts
-- [ ] T005 [P] Add `AuthMethod` type (`'azure-ad' | 'api-key' | 'none'`) in src/models/auth.ts
+- [x] T003 Extend `ConfigProfile` interface with optional `apiKey` field in src/models/config.ts
+- [x] T004 [P] Extend `AuthState` interface with `isApiKey` and `needsRefresh` fields in src/models/auth.ts
+- [x] T005 [P] Add `AuthMethod` type (`'azure-ad' | 'api-key' | 'none'`) in src/models/auth.ts
 
 **Checkpoint**: Foundation ready - user story implementation can begin
 

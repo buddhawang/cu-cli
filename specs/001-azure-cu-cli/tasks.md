@@ -221,15 +221,17 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T101 [P] Create README.md with installation and usage instructions
-- [ ] T102 [P] Create CHANGELOG.md following Keep a Changelog format
-- [ ] T103 Add global --profile option to all commands in src/index.ts
-- [ ] T104 Add global --verbose option for debug output in src/index.ts
-- [ ] T105 Implement SIGINT (Ctrl+C) graceful shutdown in src/index.ts
-- [ ] T106 Add startup time benchmark test in tests/integration/performance.test.ts
-- [ ] T107 Verify all commands work with --json flag in tests/contract/json-output.test.ts
-- [ ] T108 [P] Add npm prepublishOnly script for production build
-- [ ] T109 Run quickstart.md validation (build, lint, test, benchmark)
+- [X] T101 [P] Create README.md with installation and usage instructions
+- [X] T102 [P] Create CHANGELOG.md following Keep a Changelog format
+- [X] T103 Add global --profile option to all commands in src/index.ts
+- [X] T104 Add global --verbose option for debug output in src/index.ts
+- [X] T105 Implement SIGINT (Ctrl+C) graceful shutdown in src/index.ts
+- [X] T106 Add startup time benchmark test in tests/integration/performance.test.ts
+- [X] T107 Verify all commands work with --json flag in tests/contract/json-output.test.ts
+- [X] T108 [P] Add npm prepublishOnly script for production build
+- [X] T109 Run quickstart.md validation (build, lint, test, benchmark)
+
+**Checkpoint**: Phase 9 complete - Polish and cross-cutting concerns implemented.
 
 ---
 

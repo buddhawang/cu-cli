@@ -1,14 +1,15 @@
 # cu-cli - Azure Content Understanding CLI
 
-A command-line interface for Azure Content Understanding, enabling document analysis, analyzer discovery, and BYOC (Bring Your Own Container) model management.
+A command-line interface for Azure Content Understanding, enabling document analysis, analyzer discovery, and model deployment mapping management.
 
 ## Features
 
 - 🔐 **Azure AD Authentication** - Secure sign-in with token caching
 - ⚙️ **Multi-profile Configuration** - Manage multiple Azure CU endpoints
 - 🔍 **Analyzer Discovery** - List and inspect available analyzers
-- 📄 **Document Analysis** - Extract structured data from documents (coming soon)
-- 📦 **Model Management** - Deploy and manage custom models (coming soon)
+- 📄 **Document Analysis** - Extract structured data from documents
+- 🖼️ **Visual Overlays** - Generate annotated images with bounding boxes
+- 📦 **Model Defaults** - Configure model-to-deployment mappings
 
 ## Prerequisites
 
@@ -94,6 +95,57 @@ cu analyzer show <analyzer-id>
 |---------|-------------|
 | `cu analyzer list` | List all available analyzers |
 | `cu analyzer show <id>` | Display details of a specific analyzer |
+
+### Document Analysis
+
+| Command | Description |
+|---------|-------------|
+| `cu analyze <file>` | Analyze a local document |
+| `cu analyze <url>` | Analyze a document from URL |
+
+**Options:**
+- `--analyzer <id>` - Analyzer to use (default: `prebuilt-document`)
+- `--format <type>` - Output format: `json`, `table`, `overlay`
+- `--output <file>` - Write output to file
+- `--force` - Overwrite existing output file
+- `--pages <range>` - Page range (e.g., `1-3`)
+
+**Examples:**
+
+```bash
+# Basic analysis with JSON output
+cu analyze ./contract.pdf --json
+
+# Extract with specific analyzer
+cu analyze ./invoice.pdf --analyzer prebuilt-invoice
+
+# Generate visualization overlay
+cu analyze ./form.png --format overlay --output result.png
+
+# Analyze specific pages
+cu analyze ./document.pdf --pages 1-5
+```
+
+### Model Deployment Mappings
+
+| Command | Description |
+|---------|-------------|
+| `cu defaults list` | List model deployment mappings |
+| `cu defaults set --model <name> --deployment <name>` | Set a mapping |
+| `cu defaults remove <model>` | Remove a mapping |
+
+**Examples:**
+
+```bash
+# List current mappings
+cu defaults list
+
+# Set a model deployment mapping
+cu defaults set --model gpt-4.1 --deployment myGpt41Deployment
+
+# Remove a mapping
+cu defaults remove gpt-4.1 --force
+```
 
 ### Global Options
 
@@ -188,11 +240,14 @@ cu-cli/
 │   ├── commands/             # Command handlers
 │   │   ├── login.ts          # Authentication commands
 │   │   ├── config.ts         # Configuration commands
-│   │   └── analyzer.ts       # Analyzer commands
+│   │   ├── analyzer.ts       # Analyzer commands
+│   │   ├── analyze.ts        # Document analysis
+│   │   └── defaults.ts       # Model defaults commands
 │   ├── services/             # Business logic
 │   │   ├── auth.ts           # MSAL authentication
 │   │   ├── config.ts         # Configuration management
 │   │   ├── content-understanding.ts  # Azure CU API client
+│   │   ├── defaults-manager.ts       # Defaults API client
 │   │   └── formatters/       # Output formatters
 │   ├── models/               # TypeScript interfaces
 │   └── lib/                  # Utilities

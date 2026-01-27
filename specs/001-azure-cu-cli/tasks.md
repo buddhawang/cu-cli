@@ -147,22 +147,22 @@
 
 ### Implementation for User Story 4
 
-- [ ] T062 [P] [US4] Create AnalysisResult interface in src/models/analysis-result.ts
-- [ ] T063 [P] [US4] Create ExtractedField interface in src/models/analysis-result.ts
-- [ ] T064 [P] [US4] Create AnalysisOperation interface in src/models/analysis-result.ts
-- [ ] T065 [P] [US4] Create BoundingBox interface in src/models/analysis-result.ts
-- [ ] T066 [US4] Implement submitAnalysis (POST :analyze) in src/services/content-understanding.ts
-- [ ] T067 [US4] Implement submitBinaryAnalysis (POST :analyzeBinary) in src/services/content-understanding.ts
-- [ ] T068 [US4] Implement pollForResult (GET analyzerResults) in src/services/content-understanding.ts
-- [ ] T069 [US4] Implement file upload with MIME type detection in src/services/content-understanding.ts
-- [ ] T070 [US4] Create analyze command handler in src/commands/analyze.ts
-- [ ] T071 [US4] Implement local file path handling in src/commands/analyze.ts
-- [ ] T072 [US4] Implement URL source handling in src/commands/analyze.ts
-- [ ] T073 [US4] Integrate progress feedback during polling in src/commands/analyze.ts
-- [ ] T074 [US4] Register analyze command in src/index.ts
-- [ ] T075 [US4] Unit test for submitAnalysis/pollForResult in tests/unit/services/content-understanding.test.ts
-- [ ] T076 [US4] Contract test for cu analyze in tests/contract/analyze.test.ts
-- [ ] T077 [US4] Integration test for analyze workflow in tests/integration/analyze-workflow.test.ts
+- [X] T062 [P] [US4] Create AnalysisResult interface in src/models/analysis-result.ts
+- [X] T063 [P] [US4] Create ExtractedField interface in src/models/analysis-result.ts
+- [X] T064 [P] [US4] Create AnalysisOperation interface in src/models/analysis-result.ts
+- [X] T065 [P] [US4] Create BoundingBox interface in src/models/analysis-result.ts
+- [X] T066 [US4] Implement submitAnalysis (POST :analyze) in src/services/content-understanding.ts
+- [X] T067 [US4] Implement submitBinaryAnalysis (POST :analyzeBinary) in src/services/content-understanding.ts
+- [X] T068 [US4] Implement pollForResult (GET analyzerResults) in src/services/content-understanding.ts
+- [X] T069 [US4] Implement file upload with MIME type detection in src/services/content-understanding.ts
+- [X] T070 [US4] Create analyze command handler in src/commands/analyze.ts
+- [X] T071 [US4] Implement local file path handling in src/commands/analyze.ts
+- [X] T072 [US4] Implement URL source handling in src/commands/analyze.ts
+- [X] T073 [US4] Integrate progress feedback during polling in src/commands/analyze.ts
+- [X] T074 [US4] Register analyze command in src/index.ts
+- [X] T075 [US4] Unit test for submitAnalysis/pollForResult in tests/unit/services/content-understanding.test.ts
+- [X] T076 [US4] Contract test for cu analyze in tests/contract/analyze.test.ts
+- [X] T077 [US4] Integration test for analyze workflow in tests/integration/analyze-workflow.test.ts
 
 **Checkpoint**: User Story 4 complete - Core analysis workflow works. Users can extract data from documents.
 

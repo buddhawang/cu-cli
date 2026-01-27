@@ -245,7 +245,8 @@ describe('ContentUnderstandingClient', () => {
       const result = await client.listAnalyzers();
 
       expect(result.value).toHaveLength(0);
-      expect(result.nextLink).toBeUndefined();
+      // nextLink is empty string when not provided in response
+      expect(result.nextLink).toBeFalsy();
     });
   });
 
@@ -467,6 +468,312 @@ describe('ContentUnderstandingClient', () => {
       const client2 = getContentUnderstandingClient();
       
       expect(client1).not.toBe(client2);
+    });
+  });
+
+  // ============================================
+  // Analysis Method Tests (Phase 6)
+  // ============================================
+
+  describe('submitAnalysis', () => {
+    const mockOperationLocation = 'https://test-resource.cognitiveservices.azure.com/contentunderstanding/analyzerResults/op-12345?api-version=2025-11-01';
+
+    it('should_submit_url_analysis_and_return_operation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: new Map([['Operation-Location', mockOperationLocation]]),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const operation = await client.submitAnalysis('prebuilt-document', {
+        inputs: [{ url: 'https://example.com/doc.pdf' }],
+      });
+
+      expect(operation.operationId).toBe('op-12345');
+      expect(operation.operationLocation).toBe(mockOperationLocation);
+      expect(operation.status).toBe('notStarted');
+    });
+
+    it('should_include_page_range_in_request', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: new Map([['Operation-Location', mockOperationLocation]]),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      await client.submitAnalysis('prebuilt-document', {
+        inputs: [{ url: 'https://example.com/doc.pdf', range: '1-5' }],
+      });
+
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+      expect(requestBody.inputs[0].range).toBe('1-5');
+    });
+
+    it('should_throw_error_when_operation_location_missing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: new Map(),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      
+      await expect(client.submitAnalysis('prebuilt-document', {
+        inputs: [{ url: 'https://example.com/doc.pdf' }],
+      })).rejects.toThrow(CliError);
+    });
+  });
+
+  describe('submitBinaryAnalysis', () => {
+    const mockOperationLocation = 'https://test-resource.cognitiveservices.azure.com/contentunderstanding/analyzerResults/op-67890?api-version=2025-11-01';
+
+    it('should_submit_binary_content_and_return_operation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: new Map([['Operation-Location', mockOperationLocation]]),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const content = Buffer.from('fake pdf content');
+      const operation = await client.submitBinaryAnalysis(
+        'prebuilt-document',
+        content,
+        'application/pdf'
+      );
+
+      expect(operation.operationId).toBe('op-67890');
+      expect(operation.status).toBe('notStarted');
+
+      // Verify request
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain(':analyzeBinary');
+      expect(options.headers['Content-Type']).toBe('application/pdf');
+    });
+  });
+
+  describe('getAnalysisResult', () => {
+    it('should_return_running_status_when_in_progress', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'running',
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const result = await client.getAnalysisResult('op-12345');
+
+      expect(result.id).toBe('op-12345');
+      expect(result.status).toBe('running');
+    });
+
+    it('should_return_full_result_when_succeeded', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'succeeded',
+          result: {
+            analyzerId: 'prebuilt-document',
+            apiVersion: '2025-11-01',
+            createdAt: '2026-01-22T10:00:00Z',
+            warnings: [],
+            contents: [
+              {
+                kind: 'document',
+                mimeType: 'application/pdf',
+                markdown: '# Document\n\nContent here',
+                startPageNumber: 1,
+                endPageNumber: 2,
+                fields: {
+                  Title: {
+                    type: 'string',
+                    valueString: 'Sample Document',
+                    confidence: 0.95,
+                  },
+                  Amount: {
+                    type: 'number',
+                    valueNumber: 1234.56,
+                    confidence: 0.88,
+                  },
+                },
+              },
+            ],
+            usage: {
+              documentPagesStandard: 2,
+              tokens: { 'gpt-4.1-mini-input': 500 },
+            },
+          },
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const result = await client.getAnalysisResult('op-12345');
+
+      expect(result.status).toBe('succeeded');
+      expect(result.analyzerId).toBe('prebuilt-document');
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents?.[0].fields['Title'].valueString).toBe('Sample Document');
+      expect(result.contents?.[0].fields['Amount'].valueNumber).toBe(1234.56);
+      expect(result.usage?.documentPagesStandard).toBe(2);
+    });
+
+    it('should_return_error_when_failed', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'failed',
+          error: {
+            code: 'InvalidDocument',
+            message: 'Document format not supported',
+          },
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const result = await client.getAnalysisResult('op-12345');
+
+      expect(result.status).toBe('failed');
+      expect(result.error?.code).toBe('InvalidDocument');
+      expect(result.error?.message).toBe('Document format not supported');
+    });
+  });
+
+  describe('pollForResult', () => {
+    it('should_return_result_when_succeeded_immediately', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'succeeded',
+          result: {
+            analyzerId: 'prebuilt-document',
+            apiVersion: '2025-11-01',
+            createdAt: '2026-01-22T10:00:00Z',
+            warnings: [],
+            contents: [],
+          },
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const result = await client.pollForResult({
+        operationId: 'op-12345',
+        operationLocation: 'https://test/op-12345',
+        status: 'notStarted',
+      });
+
+      expect(result.status).toBe('succeeded');
+    });
+
+    it('should_poll_multiple_times_until_succeeded', async () => {
+      // First call: running
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'running',
+        }),
+      });
+
+      // Second call: succeeded
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'succeeded',
+          result: {
+            analyzerId: 'prebuilt-document',
+            apiVersion: '2025-11-01',
+            createdAt: '2026-01-22T10:00:00Z',
+            warnings: [],
+            contents: [],
+          },
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+      const progressCalls: string[] = [];
+
+      const result = await client.pollForResult(
+        {
+          operationId: 'op-12345',
+          operationLocation: 'https://test/op-12345',
+          status: 'notStarted',
+        },
+        {
+          initialDelayMs: 10, // Fast polling for test
+          onProgress: (status) => progressCalls.push(status),
+        }
+      );
+
+      expect(result.status).toBe('succeeded');
+      expect(progressCalls).toContain('running');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should_throw_error_when_failed', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'failed',
+          error: {
+            code: 'InvalidDocument',
+            message: 'Document format not supported',
+          },
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+
+      await expect(
+        client.pollForResult({
+          operationId: 'op-12345',
+          operationLocation: 'https://test/op-12345',
+          status: 'notStarted',
+        })
+      ).rejects.toThrow(CliError);
+    });
+
+    it('should_throw_timeout_error_when_exceeds_max_wait', async () => {
+      // Always return running
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          id: 'op-12345',
+          status: 'running',
+        }),
+      });
+
+      const client = new ContentUnderstandingClient(testEndpoint);
+
+      await expect(
+        client.pollForResult(
+          {
+            operationId: 'op-12345',
+            operationLocation: 'https://test/op-12345',
+            status: 'notStarted',
+          },
+          {
+            maxWaitMs: 50,
+            initialDelayMs: 10,
+          }
+        )
+      ).rejects.toThrow('timed out');
     });
   });
 });

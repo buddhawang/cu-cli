@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build a portable Node.js/TypeScript CLI (`cu`) that enables engineers to interact with Azure Content Understanding services from the terminal. The CLI provides Azure AD authentication (via MSAL), analyzer discovery, document analysis with multiple output formats (JSON/Markdown/image overlay), and BYOC model deployment management. Configuration is stored locally in files with support for multiple named profiles.
+Build a portable Node.js/TypeScript CLI (`cu`) that enables engineers to interact with Azure Content Understanding services from the terminal. The CLI provides Azure AD authentication (via MSAL), analyzer discovery, document analysis with multiple output formats (JSON/table/image overlay), and BYOC model deployment management. Configuration is stored locally in files with support for multiple named profiles.
 
 ## Technical Context
 
@@ -88,22 +88,21 @@ src/
 │   ├── config.ts        # cu config set/list/use/show
 │   ├── analyzer.ts      # cu analyzer list/show
 │   ├── analyze.ts       # cu analyze <file>
-│   └── model.ts         # cu model list/show/deploy/delete
+│   └── deployment.ts    # cu deployment list/set/remove
 ├── services/            # Business logic (auth, API clients, formatters)
 │   ├── auth.ts          # MSAL authentication wrapper
 │   ├── config.ts        # Configuration file management
 │   ├── content-understanding.ts  # Azure CU API client
-│   ├── model-manager.ts # BYOC model operations
+│   ├── deployment-manager.ts # BYOC deployment operations
 │   └── formatters/      # Output formatters
 │       ├── json.ts
-│       ├── markdown.ts
 │       ├── table.ts
 │       └── overlay.ts   # Image overlay generation
 ├── models/              # TypeScript interfaces and types
 │   ├── analyzer.ts      # Analyzer, AnalyzerField types
 │   ├── analysis-result.ts  # AnalysisResult, BoundingBox types
 │   ├── config.ts        # ConfigProfile, AppConfig types
-│   └── model.ts         # CustomModel, DeploymentStatus types
+│   └── deployment.ts    # Deployment, DeploymentStatus types
 └── lib/                 # Shared utilities
     ├── errors.ts        # Custom error classes with context
     ├── http.ts          # HTTP client wrapper with retry logic

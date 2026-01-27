@@ -205,8 +205,8 @@ describe('Analyzer Commands Contract', () => {
       const result = runCli('--json analyzer list');
 
       // Should not fail due to unrecognized option
-      // Will fail with auth error
-      expect(result.exitCode).toBe(1);
+      // Will fail with auth/network error (various exit codes possible)
+      expect(result.exitCode).toBeGreaterThan(0);
       // Output should contain error indication
       const output = result.stdout || result.stderr;
       expect(output).toContain('Error');

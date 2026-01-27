@@ -188,32 +188,32 @@
 
 ---
 
-## Phase 8: User Story 6 - Manage BYOC Model Deployments (Priority: P3)
+## Phase 8: User Story 6 - Manage Model Deployment Mappings (Priority: P3)
 
-**Goal**: Deploy, list, and manage custom models on Azure AI resources
+**Goal**: Configure default model-to-deployment mappings for Azure OpenAI models
 
-**Independent Test**: Run `cu deployment list` to see deployed models, `cu deployment set` to add a new model
+**Independent Test**: Run `cu defaults list` to see mappings, `cu defaults set --model gpt-4.1 --deployment myDeployment` to add
 
 ### Implementation for User Story 6
 
-- [ ] T085 [P] [US6] Create Deployment interface in src/models/deployment.ts
-- [ ] T086 [P] [US6] Create DeploymentStatus type in src/models/deployment.ts
-- [ ] T087 [P] [US6] Create DeploymentList interface in src/models/deployment.ts
-- [ ] T088 [US6] Create DeploymentManager service in src/services/deployment-manager.ts
-- [ ] T089 [US6] Implement listDeployments in src/services/deployment-manager.ts
-- [ ] T090 [US6] Implement getDeployment in src/services/deployment-manager.ts
-- [ ] T091 [US6] Implement setDeployment (create/update) in src/services/deployment-manager.ts
-- [ ] T092 [US6] Implement removeDeployment in src/services/deployment-manager.ts
-- [ ] T093 [US6] Implement deployment polling with progress in src/services/deployment-manager.ts
-- [ ] T094 [US6] Create deployment list command handler in src/commands/deployment.ts
-- [ ] T095 [US6] Create deployment set command handler in src/commands/deployment.ts
-- [ ] T096 [US6] Create deployment remove command handler in src/commands/deployment.ts
-- [ ] T097 [US6] Implement remove confirmation prompt in src/commands/deployment.ts
-- [ ] T098 [US6] Register deployment commands in src/index.ts
-- [ ] T099 [US6] Unit test for DeploymentManager in tests/unit/services/deployment-manager.test.ts
-- [ ] T100 [US6] Contract test for cu deployment list/set/remove in tests/contract/deployment.test.ts
+- [X] T085 [P] [US6] Create ContentUnderstandingDefaults interface in src/models/defaults.ts
+- [X] T086 [P] [US6] Create ModelDeployments type in src/models/defaults.ts
+- [X] T087 [P] [US6] Create UpdateDefaultsRequest interface in src/models/defaults.ts
+- [X] T088 [US6] Create DefaultsManager service in src/services/defaults-manager.ts
+- [X] T089 [US6] Implement getDefaults in src/services/defaults-manager.ts
+- [X] T090 [US6] Implement updateDefaults (merge-patch) in src/services/defaults-manager.ts
+- [X] T091 [US6] Implement setModelDeployment in src/services/defaults-manager.ts
+- [X] T092 [US6] Implement removeModelDeployment in src/services/defaults-manager.ts
+- [X] T093 [US6] (Removed - no polling needed for defaults API)
+- [X] T094 [US6] Create defaults list command handler in src/commands/defaults.ts
+- [X] T095 [US6] Create defaults set command handler in src/commands/defaults.ts
+- [X] T096 [US6] Create defaults remove command handler in src/commands/defaults.ts
+- [X] T097 [US6] Implement remove confirmation prompt in src/commands/defaults.ts
+- [X] T098 [US6] Register defaults commands in src/index.ts
+- [X] T099 [US6] Unit test for DefaultsManager in tests/unit/services/defaults-manager.test.ts
+- [X] T100 [US6] Contract test for cu defaults list/set/remove in tests/contract/defaults.test.ts
 
-**Checkpoint**: User Story 6 complete - Full BYOC model lifecycle management available.
+**Checkpoint**: User Story 6 complete - Model deployment mapping management available.
 
 ---
 

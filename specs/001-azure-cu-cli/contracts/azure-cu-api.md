@@ -96,6 +96,53 @@ GET {endpoint}/contentunderstanding/analyzers/{analyzerId}?api-version=2025-11-0
 
 ---
 
+### Defaults (Model Deployment Mappings)
+
+Configuration for default model-to-deployment mappings. Maps model names (like `gpt-4.1`) to deployment names in your Azure OpenAI resource.
+
+#### Get Defaults
+
+```http
+GET {endpoint}/contentunderstanding/defaults?api-version=2025-11-01
+```
+
+**Response 200:**
+```json
+{
+  "modelDeployments": {
+    "gpt-4.1": "myGpt41Deployment",
+    "text-embedding-3-large": "myTextEmbedding3LargeDeployment"
+  }
+}
+```
+
+#### Update Defaults (Merge-Patch)
+
+Updates model deployment mappings using JSON merge-patch semantics. Only specified mappings are updated; others are preserved. Set a value to `null` to remove a mapping.
+
+```http
+PATCH {endpoint}/contentunderstanding/defaults?api-version=2025-11-01
+Content-Type: application/merge-patch+json
+
+{
+  "modelDeployments": {
+    "gpt-4.1": "newGpt41Deployment"
+  }
+}
+```
+
+**Response 200:**
+```json
+{
+  "modelDeployments": {
+    "gpt-4.1": "newGpt41Deployment",
+    "text-embedding-3-large": "myTextEmbedding3LargeDeployment"
+  }
+}
+```
+
+---
+
 ### Document Analysis
 
 #### Submit Analysis (URL source)
@@ -326,6 +373,9 @@ CLI determines MIME type by:
 | `cu analyzer show <id>` | `GET /analyzers/{id}` |
 | `cu analyze <file>` | `POST /analyzers/{id}:analyze` or `:analyzeBinary` |
 | - | `GET /analyzerResults/{opId}` (polling) |
+| `cu defaults list` | `GET /defaults` |
+| `cu defaults set` | `PATCH /defaults` (merge-patch) |
+| `cu defaults remove` | `PATCH /defaults` (set mapping to null) |
 
 ### API Response → CLI Output
 

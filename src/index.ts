@@ -63,6 +63,17 @@ function handleError(error: unknown): void {
 process.on('uncaughtException', handleError);
 process.on('unhandledRejection', handleError);
 
+// Graceful shutdown on SIGINT (Ctrl+C)
+process.on('SIGINT', () => {
+  process.stderr.write('\n\nOperation cancelled by user.\n');
+  process.exit(130); // Standard exit code for SIGINT
+});
+
+// Graceful shutdown on SIGTERM
+process.on('SIGTERM', () => {
+  process.exit(143); // Standard exit code for SIGTERM
+});
+
 // Parse and execute
 try {
   program.parse(process.argv);

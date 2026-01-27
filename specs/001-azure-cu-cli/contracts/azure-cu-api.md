@@ -26,7 +26,7 @@ Authorization: Bearer {access-token}
 Content-Type: application/json
 ```
 
-Token scope: `https://cognitiveservices.azure.com/.default`
+Token scope: `https://cognitiveservices.azure.com/user_impersonation`
 
 ---
 

@@ -469,7 +469,7 @@ export class AuthService {
       });
 
       // Timeout after 5 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         server.close();
         reject(
           new CliError(
@@ -480,6 +480,9 @@ export class AuthService {
           )
         );
       }, 5 * 60 * 1000);
+
+      // Ensure timeout doesn't keep process alive if server closes first
+      timeoutId.unref();
     });
   }
 }

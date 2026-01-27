@@ -38,7 +38,7 @@ export interface AuthState {
 /**
  * Token scopes required for Azure Content Understanding API.
  */
-export const AUTH_SCOPES = ['https://cognitiveservices.azure.com/.default'];
+export const AUTH_SCOPES = ['https://cognitiveservices.azure.com/user_impersonation'];
 
 /**
  * MSAL client configuration constants.

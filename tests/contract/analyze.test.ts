@@ -3,9 +3,9 @@
  * Verifies the CLI contract for document analysis.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { execSync, type ExecSyncOptionsWithStringEncoding } from 'node:child_process';
-import { existsSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as os from 'node:os';

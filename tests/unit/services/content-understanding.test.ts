@@ -114,7 +114,7 @@ describe('ContentUnderstandingClient', () => {
       
       // The trailing slash should be removed
       return client.listAnalyzers().then(() => {
-        const callUrl = mockFetch.mock.calls[0][0] as string;
+        const callUrl = mockFetch.mock.calls[0]?.[0] as string;
         expect(callUrl).toContain(testEndpoint + '/contentunderstanding/analyzers');
         expect(callUrl).not.toContain('//contentunderstanding');
       });
@@ -133,11 +133,13 @@ describe('ContentUnderstandingClient', () => {
       const result = await client.listAnalyzers();
 
       expect(result.value).toHaveLength(2);
-      expect(result.value[0].id).toBe('prebuilt-document');
-      expect(result.value[0].status).toBe('ready');
-      expect(result.value[0].description).toBe('General document processing');
-      expect(result.value[0].createdAt).toBeInstanceOf(Date);
-      expect(result.value[0].supportedContentKinds).toEqual(['document', 'image']);
+      const firstAnalyzer = result.value[0];
+      expect(firstAnalyzer).toBeDefined();
+      expect(firstAnalyzer?.id).toBe('prebuilt-document');
+      expect(firstAnalyzer?.status).toBe('ready');
+      expect(firstAnalyzer?.description).toBe('General document processing');
+      expect(firstAnalyzer?.createdAt).toBeInstanceOf(Date);
+      expect(firstAnalyzer?.supportedContentKinds).toEqual(['document', 'image']);
       expect(result.nextLink).toBe('https://test.com/nextpage');
     });
 
@@ -151,7 +153,7 @@ describe('ContentUnderstandingClient', () => {
       const client = new ContentUnderstandingClient(testEndpoint);
       await client.listAnalyzers();
 
-      const callUrl = mockFetch.mock.calls[0][0] as string;
+      const callUrl = mockFetch.mock.calls[0]?.[0] as string;
       expect(callUrl).toContain('api-version=2025-11-01');
     });
 
@@ -165,7 +167,7 @@ describe('ContentUnderstandingClient', () => {
       const client = new ContentUnderstandingClient(testEndpoint);
       await client.listAnalyzers();
 
-      const callOptions = mockFetch.mock.calls[0][1] as RequestInit;
+      const callOptions = mockFetch.mock.calls[0]?.[1] as RequestInit;
       const headers = callOptions.headers as Record<string, string>;
       expect(headers['Authorization']).toBe('Bearer mock-access-token');
     });
@@ -180,7 +182,7 @@ describe('ContentUnderstandingClient', () => {
       const client = new ContentUnderstandingClient(testEndpoint);
       await client.listAnalyzers();
 
-      const callOptions = mockFetch.mock.calls[0][1] as RequestInit;
+      const callOptions = mockFetch.mock.calls[0]?.[1] as RequestInit;
       expect(callOptions.method).toBe('GET');
     });
 
@@ -268,8 +270,8 @@ describe('ContentUnderstandingClient', () => {
       expect(result.fieldSchema).toBeDefined();
       expect(result.fieldSchema?.name).toBe('ContractFields');
       expect(result.fieldSchema?.fields['ContractNumber']).toBeDefined();
-      expect(result.fieldSchema?.fields['ContractNumber'].type).toBe('string');
-      expect(result.fieldSchema?.fields['ContractNumber'].method).toBe('extract');
+      expect(result.fieldSchema?.fields['ContractNumber']?.type).toBe('string');
+      expect(result.fieldSchema?.fields['ContractNumber']?.method).toBe('extract');
     });
 
     it('should_encode_analyzer_id_in_url', async () => {
@@ -282,7 +284,7 @@ describe('ContentUnderstandingClient', () => {
       const client = new ContentUnderstandingClient(testEndpoint);
       await client.getAnalyzer('analyzer/with/slashes');
 
-      const callUrl = mockFetch.mock.calls[0][0] as string;
+      const callUrl = mockFetch.mock.calls[0]?.[0] as string;
       expect(callUrl).toContain('analyzer%2Fwith%2Fslashes');
     });
 
@@ -456,7 +458,7 @@ describe('ContentUnderstandingClient', () => {
       const client = getContentUnderstandingClient();
       await client.listAnalyzers();
 
-      const callUrl = mockFetch.mock.calls[0][0] as string;
+      const callUrl = mockFetch.mock.calls[0]?.[0] as string;
       expect(callUrl).toContain(mockProfile.endpoint);
     });
   });
@@ -507,8 +509,9 @@ describe('ContentUnderstandingClient', () => {
         inputs: [{ url: 'https://example.com/doc.pdf', range: '1-5' }],
       });
 
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-      expect(requestBody.inputs[0].range).toBe('1-5');
+      const callArgs = mockFetch.mock.calls[0] as [string, { body: string }];
+      const requestBody = JSON.parse(callArgs[1].body) as { inputs: Array<{ range: string }> };
+      expect(requestBody.inputs[0]?.range).toBe('1-5');
     });
 
     it('should_throw_error_when_operation_location_missing', async () => {
@@ -548,7 +551,8 @@ describe('ContentUnderstandingClient', () => {
       expect(operation.status).toBe('notStarted');
 
       // Verify request
-      const [url, options] = mockFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
+      const [url, options] = callArgs;
       expect(url).toContain(':analyzeBinary');
       expect(options.headers['Content-Type']).toBe('application/pdf');
     });
@@ -619,8 +623,9 @@ describe('ContentUnderstandingClient', () => {
       expect(result.status).toBe('succeeded');
       expect(result.analyzerId).toBe('prebuilt-document');
       expect(result.contents).toHaveLength(1);
-      expect(result.contents?.[0].fields['Title'].valueString).toBe('Sample Document');
-      expect(result.contents?.[0].fields['Amount'].valueNumber).toBe(1234.56);
+      const firstContent = result.contents?.[0];
+      expect(firstContent?.fields['Title']?.valueString).toBe('Sample Document');
+      expect(firstContent?.fields['Amount']?.valueNumber).toBe(1234.56);
       expect(result.usage?.documentPagesStandard).toBe(2);
     });
 

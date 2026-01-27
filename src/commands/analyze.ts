@@ -15,7 +15,6 @@ import { CliError, ErrorCodes } from '../lib/errors.js';
 import type {
   AnalysisResult,
   ExtractedField,
-  AnalyzedContent,
 } from '../models/analysis-result.js';
 
 /**
@@ -141,34 +140,51 @@ interface AnalyzeJsonOutput {
  * Converts analysis result to JSON output format.
  */
 function toJsonOutput(result: AnalysisResult): AnalyzeJsonOutput {
-  return {
+  const output: AnalyzeJsonOutput = {
     operationId: result.id,
     status: result.status,
     analyzerId: result.analyzerId,
     createdAt: result.createdAt.toISOString(),
-    contents: (result.contents ?? []).map(content => ({
-      kind: content.kind,
-      mimeType: content.mimeType,
-      markdown: content.markdown,
-      pageRange: content.startPageNumber !== undefined && content.endPageNumber !== undefined
-        ? `${content.startPageNumber}-${content.endPageNumber}`
-        : undefined,
-      fields: Object.fromEntries(
-        Object.entries(content.fields).map(([name, field]) => [
-          name,
-          {
-            type: field.type,
-            value: field.valueString ?? field.valueNumber ?? field.valueBoolean ?? null,
-            confidence: field.confidence,
-          },
-        ])
-      ),
-      tableCount: content.tables?.length,
-      figureCount: content.figures?.length,
-    })),
-    usage: result.usage,
+    contents: (result.contents ?? []).map(content => {
+      const fieldsRecord: Record<string, { type: string; value: string | number | boolean | null; confidence?: number }> = {};
+      for (const [name, field] of Object.entries(content.fields)) {
+        const fieldEntry: { type: string; value: string | number | boolean | null; confidence?: number } = {
+          type: field.type,
+          value: field.valueString ?? field.valueNumber ?? field.valueBoolean ?? null,
+        };
+        if (field.confidence !== undefined) {
+          fieldEntry.confidence = field.confidence;
+        }
+        fieldsRecord[name] = fieldEntry;
+      }
+
+      const item: AnalyzeJsonOutput['contents'][number] = {
+        kind: content.kind,
+        mimeType: content.mimeType,
+        fields: fieldsRecord,
+      };
+      if (content.markdown !== undefined) {
+        item.markdown = content.markdown;
+      }
+      if (content.startPageNumber !== undefined && content.endPageNumber !== undefined) {
+        item.pageRange = `${content.startPageNumber}-${content.endPageNumber}`;
+      }
+      if (content.tables !== undefined) {
+        item.tableCount = content.tables.length;
+      }
+      if (content.figures !== undefined) {
+        item.figureCount = content.figures.length;
+      }
+      return item;
+    }),
     warnings: result.warnings,
   };
+
+  if (result.usage !== undefined) {
+    output.usage = result.usage;
+  }
+
+  return output;
 }
 
 /**
@@ -280,11 +296,13 @@ export function createAnalyzeCommand(): Command {
 
           spinner.start(`Submitting URL for analysis...`);
 
+          const input: { url: string; range?: string } = { url: source };
+          if (options.range !== undefined) {
+            input.range = options.range;
+          }
+
           const operation = await client.submitAnalysis(options.analyzer, {
-            inputs: [{
-              url: source,
-              range: options.range,
-            }],
+            inputs: [input],
           });
 
           spinner.update('Waiting for analysis to complete...');

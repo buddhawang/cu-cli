@@ -176,13 +176,13 @@
 
 ### Implementation for User Story 5
 
-- [ ] T078 [P] [US5] Create overlay formatter in src/services/formatters/overlay.ts (lazy load sharp)
-- [ ] T079 [US5] Implement bounding box drawing in src/services/formatters/overlay.ts
-- [ ] T080 [US5] Implement output file writing with --output flag in src/commands/analyze.ts
-- [ ] T081 [US5] Implement file overwrite confirmation (--force) in src/commands/analyze.ts
-- [ ] T082 [US5] Add --format option (json/table/overlay) to analyze command
-- [ ] T083 [US5] Unit test for overlay formatter in tests/unit/services/formatters/overlay.test.ts
-- [ ] T084 [US5] Contract test for cu analyze --format options in tests/contract/analyze-formats.test.ts
+- [X] T078 [P] [US5] Create overlay formatter in src/services/formatters/overlay.ts (lazy load sharp)
+- [X] T079 [US5] Implement bounding box drawing in src/services/formatters/overlay.ts
+- [X] T080 [US5] Implement output file writing with --output flag in src/commands/analyze.ts
+- [X] T081 [US5] Implement file overwrite confirmation (--force) in src/commands/analyze.ts
+- [X] T082 [US5] Add --format option (json/table/overlay) to analyze command
+- [X] T083 [US5] Unit test for overlay formatter in tests/unit/services/formatters/overlay.test.ts
+- [X] T084 [US5] Contract test for cu analyze --format options in tests/contract/analyze-formats.test.ts
 
 **Checkpoint**: User Story 5 complete - Overlay output format works. Users can generate visualizations.
 

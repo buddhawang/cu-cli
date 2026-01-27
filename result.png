@@ -1,0 +1,45 @@
+
+Analysis Complete
+─────────────────
+Analyzer:  prebuilt-invoice
+Status:    succeeded
+
+Content (pages 1-3)
+Type: document (application/pdf)
+
+Extracted Fields:
+FIELD                     TYPE    VALUE                              CONF
+────────────────────────  ──────  ─────────────────────────────────  ────
+AmountDue                 object  {2 fields}                            -
+BalanceForward            object  {2 fields}                            -
+BillingAddress            string  123 Bill St, Redmond WA, 98052      74%
+BillingAddressRecipient   string  Microsoft Finance                   74%
+CountryRegion             string  USA                                   -
+CustomerAddress           string  123 Other St, Redmond WA, 98052     82%
+CustomerAddressRecipient  string  Microsoft Corp                      76%
+CustomerId                string  CID-12345                           81%
+CustomerName              string  MICROSOFT CORPORATION               23%
+CustomerTaxId             string  -                                   96%
+DueDate                   date    -                                   94%
+InvoiceDate               date    -                                   97%
+InvoiceId                 string  INV-100                             92%
+LineItems                 array   [3 items]                             -
+PaymentTerm               string  -                                   93%
+PONumber                  string  PO-3333                             88%
+RemittanceAddress         string  123 Remit St New York, NY, 10001    78%
+RemittanceAddressRecipie  string  Contoso Billing                     83%
+ServiceAddress            string  123 Service St, Redmond WA, 98052   77%
+ServiceAddressRecipient   string  Microsoft Services                  74%
+ShippingAddress           string  123 Ship St, Redmond WA, 98052      82%
+ShippingAddressRecipient  string  Microsoft Delivery                  78%
+SubtotalAmount            object  {2 fields}                            -
+TaxDetails                array   [1 items]                             -
+TotalAmount               object  {2 fields}                            -
+TotalDiscountAmount       object  {2 fields}                            -
+TotalTaxAmount            object  {2 fields}                            -
+VendorAddress             string  123 456th St New York, NY, 10001    87%
+VendorAddressRecipient    string  Contoso Headquarters                90%
+VendorName                string  CONTOSO LTD.                        82%
+VendorTaxId               string  -                                   95%
+
+Tables: 9 detected

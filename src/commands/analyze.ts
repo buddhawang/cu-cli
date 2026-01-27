@@ -6,9 +6,11 @@
 import { Command } from 'commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as readline from 'node:readline';
 import { getContentUnderstandingClient } from '../services/content-understanding.js';
 import { createJsonFormatter } from '../services/formatters/json.js';
 import { createTableFormatter } from '../services/formatters/table.js';
+import { renderOverlay, getOverlaySummary } from '../services/formatters/overlay.js';
 import { createSpinner } from '../lib/progress.js';
 import { validateFilePath, validateUrl, validateSupportedFileType } from '../lib/validation.js';
 import { CliError, ErrorCodes } from '../lib/errors.js';
@@ -16,6 +18,16 @@ import type {
   AnalysisResult,
   ExtractedField,
 } from '../models/analysis-result.js';
+
+/**
+ * Supported output formats.
+ */
+type OutputFormat = 'json' | 'table' | 'overlay';
+
+/**
+ * Image formats supported by sharp for overlay rendering.
+ */
+const OVERLAY_SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.tiff', '.tif', '.bmp', '.gif', '.webp']);
 
 /**
  * MIME type mapping for supported file extensions.
@@ -257,6 +269,23 @@ function displayTableResult(result: AnalysisResult): void {
 }
 
 /**
+ * Prompts user for confirmation.
+ */
+async function confirmOverwrite(filePath: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(`File "${filePath}" already exists. Overwrite? [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
+}
+
+/**
  * Creates the analyze command.
  * Analyzes a document using the specified analyzer.
  */
@@ -267,13 +296,79 @@ export function createAnalyzeCommand(): Command {
     .requiredOption('-a, --analyzer <id>', 'Analyzer ID to use (e.g., prebuilt-document)')
     .option('-r, --range <pages>', 'Page range to analyze (e.g., "1-3")')
     .option('-t, --timeout <seconds>', 'Maximum wait time in seconds', '300')
+    .option('-f, --format <format>', 'Output format: json, table, overlay', 'table')
+    .option('-o, --output <file>', 'Write output to file (required for overlay format)')
+    .option('--force', 'Overwrite output file without confirmation')
     .action(async (source: string, options: {
       analyzer: string;
       range?: string;
       timeout?: string;
+      format?: string;
+      output?: string;
+      force?: boolean;
     }) => {
       const parent = command.parent;
       const globalOpts = parent?.opts<{ json?: boolean; verbose?: boolean }>() ?? {};
+
+      // Determine output format
+      let format: OutputFormat = 'table';
+      if (globalOpts.json === true) {
+        format = 'json';
+      } else if (options.format !== undefined) {
+        const validFormats: OutputFormat[] = ['json', 'table', 'overlay'];
+        if (validFormats.includes(options.format as OutputFormat)) {
+          format = options.format as OutputFormat;
+        } else {
+          throw new CliError(
+            ErrorCodes.CONFIG_INVALID,
+            'Invalid format',
+            `Unknown format: ${options.format}`,
+            'Use one of: json, table, overlay'
+          );
+        }
+      }
+
+      // Overlay format requires --output
+      if (format === 'overlay' && options.output === undefined) {
+        throw new CliError(
+          ErrorCodes.CONFIG_INVALID,
+          'Output file required',
+          'The overlay format requires an output file',
+          'Specify output file: --output result.png'
+        );
+      }
+
+      // Overlay format requires a local file, not a URL
+      if (format === 'overlay' && isUrl(source)) {
+        throw new CliError(
+          ErrorCodes.UNSUPPORTED_FILE_TYPE,
+          'Overlay not supported for URLs',
+          'The overlay format requires a local image file as source',
+          'Download the file first, then use: cu analyze ./local-file.png --format overlay --output result.png'
+        );
+      }
+
+      // Overlay format requires an image file (not PDF, docx, etc.)
+      if (format === 'overlay' && !isUrl(source)) {
+        const ext = path.extname(source).toLowerCase();
+        if (!OVERLAY_SUPPORTED_EXTENSIONS.has(ext)) {
+          throw new CliError(
+            ErrorCodes.UNSUPPORTED_FILE_TYPE,
+            'Overlay not supported for this file type',
+            `The overlay format requires an image file, but got: ${ext || 'unknown'}`,
+            'Use --format json or --format table for non-image files, or convert the document to an image first'
+          );
+        }
+      }
+
+      // Check if output file exists and prompt for confirmation
+      if (options.output !== undefined && fs.existsSync(options.output) && options.force !== true) {
+        const confirmed = await confirmOverwrite(options.output);
+        if (!confirmed) {
+          process.stderr.write('Operation cancelled.\n');
+          process.exit(0);
+        }
+      }
 
       const spinner = createSpinner();
       const timeoutMs = parseInt(options.timeout ?? '300', 10) * 1000;
@@ -365,12 +460,74 @@ export function createAnalyzeCommand(): Command {
           spinner.succeed('Analysis complete');
         }
 
-        // Output result
-        if (globalOpts.json === true) {
-          const jsonFormatter = createJsonFormatter<AnalyzeJsonOutput>();
-          process.stdout.write(jsonFormatter.format(toJsonOutput(result)) + '\n');
-        } else {
-          displayTableResult(result);
+        // Output result based on format
+        switch (format) {
+          case 'json': {
+            const jsonFormatter = createJsonFormatter<AnalyzeJsonOutput>();
+            const jsonOutput = jsonFormatter.format(toJsonOutput(result)) + '\n';
+            if (options.output !== undefined) {
+              fs.writeFileSync(options.output, jsonOutput);
+              process.stdout.write(`Output written to: ${options.output}\n`);
+            } else {
+              process.stdout.write(jsonOutput);
+            }
+            break;
+          }
+
+          case 'overlay': {
+            // Overlay requires the source to be an image file
+            if (isUrl(source)) {
+              throw new CliError(
+                ErrorCodes.UNSUPPORTED_FILE_TYPE,
+                'Overlay not supported for URLs',
+                'The overlay format requires a local image file as source',
+                'Download the file first, then use: cu analyze ./local-file.png --format overlay --output result.png'
+              );
+            }
+
+            const absolutePath = path.resolve(source);
+            spinner.start('Rendering overlay...');
+
+            try {
+              const overlayResult = await renderOverlay(absolutePath, result);
+              fs.writeFileSync(options.output!, overlayResult.buffer);
+              spinner.succeed(`Overlay written to: ${options.output} (${overlayResult.boxCount} bounding boxes)`);
+            } catch (overlayError) {
+              spinner.fail('Failed to render overlay');
+              if (overlayError instanceof CliError) {
+                throw overlayError;
+              }
+              // Fallback: show summary instead
+              process.stdout.write(getOverlaySummary(result) + '\n');
+              throw new CliError(
+                ErrorCodes.API_ERROR,
+                'Overlay rendering failed',
+                overlayError instanceof Error ? overlayError.message : String(overlayError),
+                'Ensure sharp is installed: npm install sharp'
+              );
+            }
+            break;
+          }
+
+          case 'table':
+          default: {
+            if (options.output !== undefined) {
+              // Capture table output to file
+              const originalWrite = process.stdout.write.bind(process.stdout);
+              let tableOutput = '';
+              process.stdout.write = (chunk: string | Uint8Array): boolean => {
+                tableOutput += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+                return true;
+              };
+              displayTableResult(result);
+              process.stdout.write = originalWrite;
+              fs.writeFileSync(options.output, tableOutput);
+              process.stdout.write(`Output written to: ${options.output}\n`);
+            } else {
+              displayTableResult(result);
+            }
+            break;
+          }
         }
       } catch (error) {
         spinner.fail('Analysis failed');

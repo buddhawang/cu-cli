@@ -11,7 +11,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +22,10 @@ const CLI_PATH = resolve(__dirname, '../../dist/cu.cjs');
 // Use a temp directory for test config
 const TEST_CONFIG_DIR = join(tmpdir(), 'cu-cli-analyzer-test-' + Date.now().toString());
 const TEST_CU_DIR = join(TEST_CONFIG_DIR, '.cu');
+
+// Check if user has real MSAL cache (is authenticated)
+const MSAL_CACHE_PATH = join(homedir(), '.cu', 'msal-cache.json');
+const USER_IS_AUTHENTICATED = existsSync(MSAL_CACHE_PATH);
 
 /**
  * Executes the CLI with given arguments and returns output.
@@ -166,7 +170,8 @@ describe('Analyzer Commands Contract', () => {
   });
 
   describe('cu analyzer list (with config, no auth)', () => {
-    it('should_fail_with_exit_code_1_when_auth_required', () => {
+    // Skip when user is authenticated - the shared MSAL cache would make auth succeed
+    it.skipIf(USER_IS_AUTHENTICATED)('should_fail_with_exit_code_1_when_auth_required', () => {
       // Setup config but no auth
       setupTestConfig();
       
@@ -179,7 +184,8 @@ describe('Analyzer Commands Contract', () => {
   });
 
   describe('cu analyzer show (with config, no auth)', () => {
-    it('should_fail_with_exit_code_1_when_auth_required', () => {
+    // Skip when user is authenticated - the shared MSAL cache would make auth succeed
+    it.skipIf(USER_IS_AUTHENTICATED)('should_fail_with_exit_code_1_when_auth_required', () => {
       // Setup config but no auth
       setupTestConfig();
       

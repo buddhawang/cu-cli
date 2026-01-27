@@ -15,6 +15,24 @@ import {
   type ContentKind,
   type AnalyzerStatus,
 } from '../models/analyzer.js';
+import {
+  type AnalysisResult,
+  type AnalysisOperation,
+  type AnalyzeRequest,
+  type AnalyzedContent,
+  type ExtractedField,
+  type DetectedTable,
+  type DetectedFigure,
+  type BoundingBox,
+  type TextSpan,
+  type TableCell,
+  type OperationStatus,
+  type AnalysisOperationApiResponse,
+  type AnalyzedContentApiResponse,
+  type ExtractedFieldApiResponse,
+  type DetectedTableApiResponse,
+  type DetectedFigureApiResponse,
+} from '../models/analysis-result.js';
 import { getAuthService } from './auth.js';
 import { getConfigService } from './config.js';
 import { CliError, ErrorCodes } from '../lib/errors.js';
@@ -326,6 +344,384 @@ export class ContentUnderstandingClient {
     );
 
     return this.parseAnalyzer(response);
+  }
+
+  // ============================================
+  // Document Analysis Methods
+  // ============================================
+
+  /**
+   * Submits a document for analysis using a URL source.
+   * @param analyzerId - The analyzer to use
+   * @param request - Analysis request with URL inputs
+   * @returns Analysis operation for polling
+   */
+  async submitAnalysis(
+    analyzerId: string,
+    request: AnalyzeRequest
+  ): Promise<AnalysisOperation> {
+    const token = await this.getAccessToken();
+    const url = `${this.endpoint}/contentunderstanding/analyzers/${encodeURIComponent(analyzerId)}:analyze?api-version=${API_VERSION}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      await this.handleErrorResponse(response);
+    }
+
+    const operationLocation = response.headers.get('Operation-Location');
+    if (operationLocation === null || operationLocation === '') {
+      throw new CliError(
+        ErrorCodes.API_ERROR,
+        'Missing operation location',
+        'The API did not return an operation location header',
+        'Try the request again or contact support'
+      );
+    }
+
+    // Extract operation ID from the URL
+    const operationId = this.extractOperationId(operationLocation);
+
+    return {
+      operationId,
+      operationLocation,
+      status: 'notStarted',
+    };
+  }
+
+  /**
+   * Submits a document for analysis using binary upload.
+   * @param analyzerId - The analyzer to use
+   * @param content - Binary content of the document
+   * @param mimeType - MIME type of the document
+   * @returns Analysis operation for polling
+   */
+  async submitBinaryAnalysis(
+    analyzerId: string,
+    content: Buffer | Uint8Array,
+    mimeType: string
+  ): Promise<AnalysisOperation> {
+    const token = await this.getAccessToken();
+    const url = `${this.endpoint}/contentunderstanding/analyzers/${encodeURIComponent(analyzerId)}:analyzeBinary?api-version=${API_VERSION}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': mimeType,
+      },
+      body: content,
+    });
+
+    if (!response.ok) {
+      await this.handleErrorResponse(response);
+    }
+
+    const operationLocation = response.headers.get('Operation-Location');
+    if (operationLocation === null || operationLocation === '') {
+      throw new CliError(
+        ErrorCodes.API_ERROR,
+        'Missing operation location',
+        'The API did not return an operation location header',
+        'Try the request again or contact support'
+      );
+    }
+
+    const operationId = this.extractOperationId(operationLocation);
+
+    return {
+      operationId,
+      operationLocation,
+      status: 'notStarted',
+    };
+  }
+
+  /**
+   * Gets the status and result of an analysis operation.
+   * @param operationId - The operation ID to check
+   * @returns Analysis result with current status
+   */
+  async getAnalysisResult(operationId: string): Promise<AnalysisResult> {
+    const response = await this.request<AnalysisOperationApiResponse>(
+      'GET',
+      `/analyzerResults/${encodeURIComponent(operationId)}`
+    );
+
+    return this.parseAnalysisResult(response);
+  }
+
+  /**
+   * Polls for analysis completion with exponential backoff.
+   * @param operation - The operation to poll
+   * @param options - Polling options
+   * @returns Final analysis result
+   */
+  async pollForResult(
+    operation: AnalysisOperation,
+    options: {
+      maxWaitMs?: number;
+      initialDelayMs?: number;
+      maxDelayMs?: number;
+      onProgress?: (status: OperationStatus) => void;
+    } = {}
+  ): Promise<AnalysisResult> {
+    const {
+      maxWaitMs = 5 * 60 * 1000, // 5 minutes
+      initialDelayMs = 1000,
+      maxDelayMs = 10000,
+      onProgress,
+    } = options;
+
+    const startTime = Date.now();
+    let delay = initialDelayMs;
+
+    while (Date.now() - startTime < maxWaitMs) {
+      const result = await this.getAnalysisResult(operation.operationId);
+
+      onProgress?.(result.status);
+
+      if (result.status === 'succeeded') {
+        return result;
+      }
+
+      if (result.status === 'failed') {
+        throw new CliError(
+          ErrorCodes.ANALYSIS_FAILED,
+          'Analysis failed',
+          result.error?.message ?? 'The document analysis failed',
+          'Check the document format and try again'
+        );
+      }
+
+      if (result.status === 'canceled') {
+        throw new CliError(
+          ErrorCodes.OPERATION_CANCELLED,
+          'Analysis canceled',
+          'The analysis operation was canceled',
+          'Submit the analysis again'
+        );
+      }
+
+      // Wait before next poll
+      await this.delay(delay);
+      delay = Math.min(delay * 1.5, maxDelayMs);
+    }
+
+    throw new CliError(
+      ErrorCodes.API_TIMEOUT,
+      'Analysis timed out',
+      `Analysis did not complete within ${maxWaitMs / 1000} seconds`,
+      'Try again or use a smaller document'
+    );
+  }
+
+  /**
+   * Extracts operation ID from the operation location URL.
+   */
+  private extractOperationId(operationLocation: string): string {
+    const match = /analyzerResults\/([^?/]+)/.exec(operationLocation);
+    if (match === null || match[1] === undefined) {
+      throw new CliError(
+        ErrorCodes.API_ERROR,
+        'Invalid operation location',
+        `Could not extract operation ID from: ${operationLocation}`,
+        'This is an API response error - contact support'
+      );
+    }
+    return match[1];
+  }
+
+  /**
+   * Delays execution for the specified duration.
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Parses an analysis operation API response.
+   */
+  private parseAnalysisResult(response: AnalysisOperationApiResponse): AnalysisResult {
+    const status = this.parseOperationStatus(response.status);
+
+    const result: AnalysisResult = {
+      id: response.id,
+      status,
+      analyzerId: response.result?.analyzerId ?? '',
+      apiVersion: response.result?.apiVersion ?? API_VERSION,
+      createdAt: response.result?.createdAt !== undefined
+        ? new Date(response.result.createdAt)
+        : new Date(),
+      warnings: response.result?.warnings ?? [],
+    };
+
+    if (response.result?.contents !== undefined) {
+      result.contents = response.result.contents.map(c => this.parseAnalyzedContent(c));
+    }
+
+    if (response.result?.usage !== undefined) {
+      result.usage = {
+        documentPagesStandard: response.result.usage.documentPagesStandard,
+        tokens: response.result.usage.tokens,
+      };
+    }
+
+    if (response.error !== undefined) {
+      result.error = {
+        code: response.error.code,
+        message: response.error.message,
+        target: response.error.target,
+        details: response.error.details,
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * Parses operation status from API response.
+   */
+  private parseOperationStatus(status: string): OperationStatus {
+    const validStatuses: OperationStatus[] = ['notStarted', 'running', 'succeeded', 'failed', 'canceled'];
+    if (validStatuses.includes(status as OperationStatus)) {
+      return status as OperationStatus;
+    }
+    return 'running'; // Default to running for unknown statuses
+  }
+
+  /**
+   * Parses analyzed content from API response.
+   */
+  private parseAnalyzedContent(content: AnalyzedContentApiResponse): AnalyzedContent {
+    const result: AnalyzedContent = {
+      kind: this.parseContentKind(content.kind) ?? 'document',
+      mimeType: content.mimeType,
+      markdown: content.markdown,
+      startPageNumber: content.startPageNumber,
+      endPageNumber: content.endPageNumber,
+      fields: {},
+    };
+
+    if (content.fields !== undefined && content.fields !== null) {
+      for (const [name, field] of Object.entries(content.fields)) {
+        result.fields[name] = this.parseExtractedField(field);
+      }
+    }
+
+    if (content.tables !== undefined) {
+      result.tables = content.tables.map(t => this.parseDetectedTable(t));
+    }
+
+    if (content.figures !== undefined) {
+      result.figures = content.figures.map(f => this.parseDetectedFigure(f));
+    }
+
+    return result;
+  }
+
+  /**
+   * Parses an extracted field from API response.
+   */
+  private parseExtractedField(field: ExtractedFieldApiResponse): ExtractedField {
+    const result: ExtractedField = {
+      type: this.parseFieldType(field.type),
+    };
+
+    if (field.valueString !== undefined) {
+      result.valueString = field.valueString;
+    }
+    if (field.valueNumber !== undefined) {
+      result.valueNumber = field.valueNumber;
+    }
+    if (field.valueBoolean !== undefined) {
+      result.valueBoolean = field.valueBoolean;
+    }
+    if (field.confidence !== undefined) {
+      result.confidence = field.confidence;
+    }
+    if (field.source !== undefined) {
+      result.source = field.source;
+    }
+
+    if (field.valueArray !== undefined) {
+      result.valueArray = field.valueArray.map(f => this.parseExtractedField(f));
+    }
+
+    if (field.valueObject !== undefined) {
+      result.valueObject = {};
+      for (const [name, subField] of Object.entries(field.valueObject)) {
+        result.valueObject[name] = this.parseExtractedField(subField);
+      }
+    }
+
+    if (field.spans !== undefined) {
+      result.spans = field.spans.map(s => ({
+        offset: s.offset,
+        length: s.length,
+      }));
+    }
+
+    if (field.boundingRegions !== undefined) {
+      result.boundingRegions = field.boundingRegions.map(r => ({
+        pageNumber: r.pageNumber,
+        polygon: r.polygon,
+      }));
+    }
+
+    return result;
+  }
+
+  /**
+   * Parses a detected table from API response.
+   */
+  private parseDetectedTable(table: DetectedTableApiResponse): DetectedTable {
+    const result: DetectedTable = {
+      rowCount: table.rowCount,
+      columnCount: table.columnCount,
+      cells: table.cells.map(c => ({
+        rowIndex: c.rowIndex,
+        columnIndex: c.columnIndex,
+        rowSpan: c.rowSpan,
+        columnSpan: c.columnSpan,
+        content: c.content,
+        isHeader: c.isHeader,
+      })),
+    };
+
+    if (table.boundingRegions !== undefined) {
+      result.boundingRegions = table.boundingRegions.map(r => ({
+        pageNumber: r.pageNumber,
+        polygon: r.polygon,
+      }));
+    }
+
+    return result;
+  }
+
+  /**
+   * Parses a detected figure from API response.
+   */
+  private parseDetectedFigure(figure: DetectedFigureApiResponse): DetectedFigure {
+    const result: DetectedFigure = {
+      id: figure.id,
+      caption: figure.caption,
+    };
+
+    if (figure.boundingRegions !== undefined) {
+      result.boundingRegions = figure.boundingRegions.map(r => ({
+        pageNumber: r.pageNumber,
+        polygon: r.polygon,
+      }));
+    }
+
+    return result;
   }
 }
 

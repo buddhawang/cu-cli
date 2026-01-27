@@ -10,6 +10,7 @@ import { CliError } from './lib/errors.js';
 import { registerLoginCommands } from './commands/login.js';
 import { registerConfigCommands } from './commands/config.js';
 import { registerAnalyzerCommands } from './commands/analyzer.js';
+import { registerAnalyzeCommands } from './commands/analyze.js';
 
 // Declare version constant (injected by esbuild)
 declare const __VERSION__: string;
@@ -31,6 +32,7 @@ program
 registerLoginCommands(program);
 registerConfigCommands(program);
 registerAnalyzerCommands(program);
+registerAnalyzeCommands(program);
 
 /**
  * Handles CLI errors with proper formatting and exit codes.

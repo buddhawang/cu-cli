@@ -181,7 +181,7 @@ export class ContentUnderstandingClient {
   private parseAnalyzer(apiResponse: AnalyzerApiResponse): Analyzer {
     const analyzer: Analyzer = {
       id: apiResponse.analyzerId,
-      description: apiResponse.description,
+      description: apiResponse.description ?? "",
       status: this.parseAnalyzerStatus(apiResponse.status),
       createdAt: new Date(apiResponse.createdAt),
       modifiedAt: new Date(apiResponse.modifiedAt),
@@ -197,10 +197,12 @@ export class ContentUnderstandingClient {
       analyzer.baseAnalyzerId = apiResponse.baseAnalyzerId;
     }
 
-    if (apiResponse.fieldSchema !== undefined) {
+    if (apiResponse.fieldSchema !== undefined && apiResponse.fieldSchema !== null) {
       analyzer.fieldSchema = {
         name: apiResponse.fieldSchema.name,
-        fields: this.parseFieldSchema(apiResponse.fieldSchema.fields),
+        fields: apiResponse.fieldSchema.fields !== undefined && apiResponse.fieldSchema.fields !== null
+          ? this.parseFieldSchema(apiResponse.fieldSchema.fields)
+          : {},
       };
     }
 
@@ -233,8 +235,12 @@ export class ContentUnderstandingClient {
    * Parses field schema from API response.
    */
   private parseFieldSchema(
-    fields: Record<string, AnalyzerFieldApiResponse>
+    fields: Record<string, AnalyzerFieldApiResponse> | undefined | null
   ): Record<string, AnalyzerField> {
+    if (fields === undefined || fields === null) {
+      return {};
+    }
+
     const result: Record<string, AnalyzerField> = {};
 
     for (const [name, fieldApi] of Object.entries(fields)) {
@@ -304,7 +310,7 @@ export class ContentUnderstandingClient {
 
     return {
       value: response.value.map(a => this.parseAnalyzer(a)),
-      nextLink: response.nextLink,
+      nextLink: response.nextLink ?? "",
     };
   }
 

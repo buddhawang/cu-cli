@@ -19,6 +19,9 @@ export interface ConfigProfile {
 
   /** Resource name (optional, for BYOC operations) */
   resourceName?: string;
+
+  /** API key for authentication (optional, takes priority over Azure AD) */
+  apiKey?: string;
 }
 
 /**

@@ -80,6 +80,7 @@ export class ContentUnderstandingClient {
 
   /**
    * Makes an authenticated API request.
+   * Uses API key if configured, otherwise falls back to Azure AD token.
    * @param method - HTTP method
    * @param path - API path (without base URL)
    * @param body - Optional request body
@@ -90,13 +91,25 @@ export class ContentUnderstandingClient {
     path: string,
     body?: unknown
   ): Promise<T> {
-    const token = await this.getAccessToken();
     const url = `${this.endpoint}/contentunderstanding${path}${path.includes('?') ? '&' : '?'}api-version=${API_VERSION}`;
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
+    
+    // Check for API key first (takes priority over Azure AD)
+    const configService = getConfigService();
+    const { profile } = configService.getActiveProfile();
+    const apiKey: string | undefined = 'apiKey' in profile ? (profile.apiKey as string | undefined) : undefined;
+    
+    if (apiKey !== undefined && apiKey !== '') {
+      // Use API key authentication
+      headers['Ocp-Apim-Subscription-Key'] = apiKey;
+    } else {
+      // Fall back to Azure AD bearer token
+      const token = await this.getAccessToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const options: RequestInit = {
       method,
@@ -137,8 +150,22 @@ export class ContentUnderstandingClient {
     const errorCode = errorData?.error?.code ?? 'UnknownError';
     const errorMessage = errorData?.error?.message ?? `HTTP ${response.status}: ${response.statusText}`;
 
+    // Check if API key was used for this request
+    const configService = getConfigService();
+    const { profile } = configService.getActiveProfile();
+    const usingApiKey = profile.apiKey !== undefined && profile.apiKey !== '';
+
     switch (response.status) {
       case 401:
+        if (usingApiKey) {
+          throw new CliError(
+            ErrorCodes.AUTH_FAILED,
+            'Invalid API key',
+            errorMessage,
+            'Verify your API key is correct with `cu config show`, or update it with `cu config set --api-key <key>`',
+            1
+          );
+        }
         throw new CliError(
           ErrorCodes.AUTH_REQUIRED,
           'Authentication required',
@@ -458,6 +485,20 @@ export class ContentUnderstandingClient {
   }
 
   /**
+   * Gets the raw JSON response of an analysis operation (unparsed).
+   * @param operationId - The operation ID to check
+   * @returns Raw API response as-is from the service
+   */
+  async getAnalysisResultRaw(operationId: string): Promise<unknown> {
+    const response = await this.request<unknown>(
+      'GET',
+      `/analyzerResults/${encodeURIComponent(operationId)}`
+    );
+
+    return response;
+  }
+
+  /**
    * Polls for analysis completion with exponential backoff.
    * @param operation - The operation to poll
    * @param options - Polling options
@@ -488,6 +529,72 @@ export class ContentUnderstandingClient {
 
       if (result.status === 'succeeded') {
         return result;
+      }
+
+      if (result.status === 'failed') {
+        throw new CliError(
+          ErrorCodes.ANALYSIS_FAILED,
+          'Analysis failed',
+          result.error?.message ?? 'The document analysis failed',
+          'Check the document format and try again'
+        );
+      }
+
+      if (result.status === 'canceled') {
+        throw new CliError(
+          ErrorCodes.OPERATION_CANCELLED,
+          'Analysis canceled',
+          'The analysis operation was canceled',
+          'Submit the analysis again'
+        );
+      }
+
+      // Wait before next poll
+      await this.delay(delay);
+      delay = Math.min(delay * 1.5, maxDelayMs);
+    }
+
+    throw new CliError(
+      ErrorCodes.API_TIMEOUT,
+      'Analysis timed out',
+      `Analysis did not complete within ${maxWaitMs / 1000} seconds`,
+      'Try again or use a smaller document'
+    );
+  }
+
+  /**
+   * Polls for analysis completion and returns raw JSON response.
+   * @param operation - The operation to poll
+   * @param options - Polling options
+   * @returns Raw API response when analysis succeeds
+   */
+  async pollForResultRaw(
+    operation: AnalysisOperation,
+    options: {
+      maxWaitMs?: number;
+      initialDelayMs?: number;
+      maxDelayMs?: number;
+      onProgress?: (status: OperationStatus) => void;
+    } = {}
+  ): Promise<unknown> {
+    const {
+      maxWaitMs = 5 * 60 * 1000, // 5 minutes
+      initialDelayMs = 1000,
+      maxDelayMs = 10000,
+      onProgress,
+    } = options;
+
+    const startTime = Date.now();
+    let delay = initialDelayMs;
+
+    while (Date.now() - startTime < maxWaitMs) {
+      // First check with parsed result to get status
+      const result = await this.getAnalysisResult(operation.operationId);
+      onProgress?.(result.status);
+
+      if (result.status === 'succeeded') {
+        // Return raw response on success
+        return this.getAnalysisResultRaw(operation.operationId);
       }
 
       if (result.status === 'failed') {

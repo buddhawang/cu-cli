@@ -123,8 +123,9 @@ export class ConfigService {
    * Sets or updates a configuration profile.
    * @param profileName - Name of the profile to set
    * @param profile - Profile configuration
+   * @param options - Optional settings like apiKey
    */
-  setProfile(profileName: string, profile: ConfigProfile): void {
+  setProfile(profileName: string, profile: ConfigProfile, options?: { apiKey?: string }): void {
     // Validate endpoint
     const validation = validateUrl(profile.endpoint);
     if (!validation.valid) {
@@ -138,6 +139,16 @@ export class ConfigService {
 
     // Use normalized URL
     profile.endpoint = validation.normalizedValue ?? profile.endpoint;
+
+    // Handle API key
+    if (options?.apiKey !== undefined) {
+      if (options.apiKey === '') {
+        // Empty string means remove the API key
+        delete profile.apiKey;
+      } else {
+        profile.apiKey = options.apiKey;
+      }
+    }
 
     const config = this.loadConfig();
     
@@ -236,6 +247,49 @@ export class ConfigService {
   getProfile(profileName: string): ConfigProfile | undefined {
     const config = this.loadConfig();
     return config.profiles[profileName];
+  }
+
+  /**
+   * Gets the API key from the active profile.
+   * @returns The API key or undefined if not configured
+   */
+  getApiKey(): string | undefined {
+    try {
+      const { profile } = this.getActiveProfile();
+      return profile.apiKey;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Updates the API key for a profile.
+   * @param profileName - Name of the profile to update
+   * @param apiKey - API key to set, or empty string to remove
+   */
+  updateProfileApiKey(profileName: string, apiKey: string): void {
+    const config = this.loadConfig();
+    
+    const profile = config.profiles[profileName];
+    if (profile === undefined) {
+      throw new CliError(
+        ErrorCodes.PROFILE_NOT_FOUND,
+        `Profile '${profileName}' not found`,
+        'Cannot update API key for a profile that does not exist',
+        'Run `cu config list` to see available profiles',
+        2
+      );
+    }
+    
+    if (apiKey === '') {
+      // Remove API key
+      delete profile.apiKey;
+    } else {
+      profile.apiKey = apiKey;
+    }
+    
+    this.config = config;
+    this.saveConfig();
   }
 
   /**

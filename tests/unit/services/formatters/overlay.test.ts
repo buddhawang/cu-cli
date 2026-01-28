@@ -8,6 +8,7 @@ import {
   getColorForType,
   createSvgOverlay,
   getOverlaySummary,
+  convertInchesToPixels,
 } from '../../../../src/services/formatters/overlay.js';
 import type { AnalysisResult, BoundingBox } from '../../../../src/models/analysis-result.js';
 
@@ -260,6 +261,30 @@ describe('Overlay Formatter', () => {
       const summary = getOverlaySummary(result, 1);
 
       expect(summary).toContain('Found 1 bounding box(es)');
+    });
+  });
+
+  describe('convertInchesToPixels', () => {
+    it('should_convert_inches_to_pixels_at_default_dpi', () => {
+      // Default DPI is 150
+      expect(convertInchesToPixels(1)).toBe(150);
+      expect(convertInchesToPixels(0.5)).toBe(75);
+      expect(convertInchesToPixels(8.5)).toBe(1275); // Standard letter width
+    });
+
+    it('should_convert_inches_to_pixels_at_custom_dpi', () => {
+      expect(convertInchesToPixels(1, 72)).toBe(72);  // PDF default DPI
+      expect(convertInchesToPixels(1, 300)).toBe(300); // High resolution
+      expect(convertInchesToPixels(8.5, 72)).toBe(612); // Letter width at 72 DPI
+    });
+
+    it('should_handle_fractional_inches', () => {
+      expect(convertInchesToPixels(0.25, 100)).toBe(25);
+      expect(convertInchesToPixels(1.5, 100)).toBe(150);
+    });
+
+    it('should_handle_zero', () => {
+      expect(convertInchesToPixels(0, 150)).toBe(0);
     });
   });
 });

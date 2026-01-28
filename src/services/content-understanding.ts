@@ -99,6 +99,7 @@ export class ContentUnderstandingClient {
     
     // Check for API key first (takes priority over Azure AD)
     const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const apiKey: string | undefined = configService.getApiKey();
     
     if (apiKey !== undefined && apiKey !== '') {
@@ -151,6 +152,7 @@ export class ContentUnderstandingClient {
 
     // Check if API key was used for this request
     const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const apiKey = configService.getApiKey();
     const usingApiKey = apiKey !== undefined && apiKey !== '';
 
@@ -394,6 +396,7 @@ export class ContentUnderstandingClient {
 
     // Check for API key first (takes priority over Azure AD)
     const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const apiKey: string | undefined = configService.getApiKey();
 
     if (apiKey !== undefined && apiKey !== '') {
@@ -455,6 +458,7 @@ export class ContentUnderstandingClient {
 
     // Check for API key first (takes priority over Azure AD)
     const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const apiKey: string | undefined = configService.getApiKey();
 
     if (apiKey !== undefined && apiKey !== '') {

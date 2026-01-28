@@ -838,7 +838,7 @@ describe('Structured Field Overlay Contract', () => {
         warnings: [],
         contents: [
           {
-            kind: 'invoice',
+            kind: 'document',
             mimeType: 'application/pdf',
             startPageNumber: 1,
             endPageNumber: 2,
@@ -848,7 +848,7 @@ describe('Structured Field Overlay Contract', () => {
             },
           },
           {
-            kind: 'receipt',
+            kind: 'document',
             mimeType: 'application/pdf',
             startPageNumber: 3,
             endPageNumber: 3,
@@ -903,7 +903,7 @@ describe('Structured Field Overlay Contract', () => {
         warnings: [],
         contents: [
           {
-            kind: 'invoice',
+            kind: 'document',
             mimeType: 'application/pdf',
             startPageNumber: 1,
             endPageNumber: 2,
@@ -912,7 +912,7 @@ describe('Structured Field Overlay Contract', () => {
             },
           },
           {
-            kind: 'receipt',
+            kind: 'document',
             mimeType: 'application/pdf',
             startPageNumber: 3,
             endPageNumber: 3,

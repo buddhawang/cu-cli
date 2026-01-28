@@ -55,19 +55,29 @@ export class DefaultsManager {
 
   /**
    * Makes an authenticated API request.
+   * Uses API key if configured, otherwise falls back to Azure AD token.
    */
   private async makeRequest<T>(
     method: string,
     body?: unknown,
     contentType?: string
   ): Promise<T> {
-    const token = await this.getAccessToken();
     const url = `${this.endpoint}/contentunderstanding/defaults?api-version=${API_VERSION}`;
 
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
       'Content-Type': contentType ?? 'application/json',
     };
+
+    // Check for API key first (takes priority over Azure AD)
+    const configService = getConfigService();
+    const apiKey: string | undefined = configService.getApiKey();
+
+    if (apiKey !== undefined && apiKey !== '') {
+      headers['Ocp-Apim-Subscription-Key'] = apiKey;
+    } else {
+      const token = await this.getAccessToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const options: RequestInit = {
       method,
@@ -101,8 +111,21 @@ export class DefaultsManager {
     const code = errorData?.error?.code ?? `HTTP${response.status}`;
     const message = errorData?.error?.message ?? response.statusText;
 
+    // Check if API key was used for this request
+    const configService = getConfigService();
+    const apiKey: string | undefined = configService.getApiKey();
+    const usingApiKey = apiKey !== undefined && apiKey !== '';
+
     switch (response.status) {
       case 401:
+        if (usingApiKey) {
+          throw new CliError(
+            ErrorCodes.AUTH_FAILED,
+            'Invalid API key',
+            message,
+            'Verify your API key is correct with `cu config show`, or update it with `cu config set --api-key <key>`'
+          );
+        }
         throw new CliError(
           ErrorCodes.AUTH_REQUIRED,
           'Authentication required',

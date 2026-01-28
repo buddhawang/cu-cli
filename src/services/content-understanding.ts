@@ -99,8 +99,8 @@ export class ContentUnderstandingClient {
     
     // Check for API key first (takes priority over Azure AD)
     const configService = getConfigService();
-    const { profile } = configService.getActiveProfile();
-    const apiKey: string | undefined = 'apiKey' in profile ? (profile.apiKey as string | undefined) : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const apiKey: string | undefined = configService.getApiKey();
     
     if (apiKey !== undefined && apiKey !== '') {
       // Use API key authentication
@@ -152,8 +152,9 @@ export class ContentUnderstandingClient {
 
     // Check if API key was used for this request
     const configService = getConfigService();
-    const { profile } = configService.getActiveProfile();
-    const usingApiKey = profile.apiKey !== undefined && profile.apiKey !== '';
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const apiKey = configService.getApiKey();
+    const usingApiKey = apiKey !== undefined && apiKey !== '';
 
     switch (response.status) {
       case 401:
@@ -387,15 +388,29 @@ export class ContentUnderstandingClient {
     analyzerId: string,
     request: AnalyzeRequest
   ): Promise<AnalysisOperation> {
-    const token = await this.getAccessToken();
     const url = `${this.endpoint}/contentunderstanding/analyzers/${encodeURIComponent(analyzerId)}:analyze?api-version=${API_VERSION}`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Check for API key first (takes priority over Azure AD)
+    const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const apiKey: string | undefined = configService.getApiKey();
+
+    if (apiKey !== undefined && apiKey !== '') {
+      // Use API key authentication
+      headers['Ocp-Apim-Subscription-Key'] = apiKey;
+    } else {
+      // Fall back to Azure AD bearer token
+      const token = await this.getAccessToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(request),
     });
 
@@ -435,15 +450,29 @@ export class ContentUnderstandingClient {
     content: Buffer | Uint8Array,
     mimeType: string
   ): Promise<AnalysisOperation> {
-    const token = await this.getAccessToken();
     const url = `${this.endpoint}/contentunderstanding/analyzers/${encodeURIComponent(analyzerId)}:analyzeBinary?api-version=${API_VERSION}`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': mimeType,
+    };
+
+    // Check for API key first (takes priority over Azure AD)
+    const configService = getConfigService();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const apiKey: string | undefined = configService.getApiKey();
+
+    if (apiKey !== undefined && apiKey !== '') {
+      // Use API key authentication
+      headers['Ocp-Apim-Subscription-Key'] = apiKey;
+    } else {
+      // Fall back to Azure AD bearer token
+      const token = await this.getAccessToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': mimeType,
-      },
+      headers,
       body: content,
     });
 

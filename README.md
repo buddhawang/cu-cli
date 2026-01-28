@@ -139,6 +139,21 @@ cu analyze ./document.pdf --format overlay --output page2.png --page 2 --dpi 300
 cu analyze ./document.pdf --pages 1-5
 ```
 
+#### Structured Field Paths in Overlay
+
+The overlay format renders bounding boxes with full field paths, making it easy to identify nested data:
+
+- **Nested objects**: `recipient.address.city`, `vendor.contactInfo.email`
+- **Array elements**: `items[0].amount`, `items[1].description`
+- **Multi-content classification**: `contents[0].vendorName`, `contents[1].invoiceNumber`
+
+Each field type uses a distinct color:
+- 🟢 **Green**: String fields
+- 🔵 **Blue**: Number/currency fields
+- 🟠 **Orange**: Date fields
+- 🟣 **Purple**: Arrays
+- 🔴 **Red**: Other types
+
 ### Model Deployment Mappings
 
 | Command | Description |

@@ -20,11 +20,12 @@ const mockProfile: ConfigProfile = {
   endpoint: 'https://test.cognitiveservices.azure.com',
 };
 
-const mockConfigService: { getActiveProfile: ReturnType<typeof vi.fn> } = {
+const mockConfigService: { getActiveProfile: ReturnType<typeof vi.fn>; getApiKey: ReturnType<typeof vi.fn> } = {
   getActiveProfile: vi.fn().mockReturnValue({
     name: 'default',
     profile: mockProfile,
   }),
+  getApiKey: vi.fn().mockReturnValue(undefined),
 };
 
 vi.mock('../../../src/services/auth.js', () => ({
@@ -64,6 +65,7 @@ describe('DefaultsManager', () => {
       name: 'default',
       profile: mockProfile,
     });
+    mockConfigService.getApiKey.mockReturnValue(undefined);
   });
 
   afterEach(() => {

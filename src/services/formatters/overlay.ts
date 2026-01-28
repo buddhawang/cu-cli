@@ -4,7 +4,7 @@
  * Supports PDF input through pdf-to-png-converter.
  */
 
-import type { AnalysisResult, BoundingBox } from '../../models/analysis-result.js';
+import type { AnalysisResult, BoundingBox, ExtractedField } from '../../models/analysis-result.js';
 import { CliError, ErrorCodes } from '../../lib/errors.js';
 import * as path from 'path';
 
@@ -38,6 +38,10 @@ export interface OverlayOptions {
   pageNumber?: number;
   /** DPI for PDF rendering (default: 150) */
   dpi?: number;
+  /** Path filter pattern (glob-like, e.g., "items[*].amount", "recipient.*") */
+  pathFilter?: string;
+  /** Maximum label length before truncation (default: 30) */
+  maxLabelLength?: number;
 }
 
 /**
@@ -126,41 +130,207 @@ function parseSourceToBoundingBoxes(source: string): BoundingBox[] {
 }
 
 /**
- * Extracts all bounding boxes from an analysis result.
+ * Matches a field path against a glob-like pattern.
+ * Supports:
+ * - Exact match: "vendorName" matches "vendorName"
+ * - Wildcard in arrays: "items[*].amount" matches "items[0].amount", "items[1].amount"
+ * - Prefix match with wildcard: "recipient.*" matches "recipient.name", "recipient.address.city"
+ * - Single segment wildcard: "*.name" matches "recipient.name", "vendor.name"
+ * @param path - The field path to test
+ * @param pattern - The glob-like pattern
+ * @returns true if the path matches the pattern
  */
-export function extractBoundingBoxes(
-  result: AnalysisResult,
-  pageNumber?: number
-): Array<{ box: BoundingBox; label: string; type: string }> {
-  const boxes: Array<{ box: BoundingBox; label: string; type: string }> = [];
+export function matchPathPattern(path: string, pattern: string): boolean {
+  // Convert glob pattern to regex
+  // Escape special regex characters except * and ?
+  let regexPattern = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\\\[\\*\\]/g, '\\[\\d+\\]')  // [*] matches [0], [1], etc.
+    .replace(/\*/g, '.*');                  // * matches anything
+  
+  // Anchor both sides - the .* segments already allow partial matching where needed
+  regexPattern = `^${regexPattern}$`;
+  
+  const regex = new RegExp(regexPattern);
+  return regex.test(path);
+}
 
-  for (const content of result.contents ?? []) {
-    // Extract from fields
-    for (const [name, field] of Object.entries(content.fields)) {
-      // First try boundingRegions (standard format)
-      if (field.boundingRegions !== undefined && field.boundingRegions.length > 0) {
-        for (const region of field.boundingRegions) {
-          if (pageNumber === undefined || region.pageNumber === pageNumber) {
-            boxes.push({
-              box: region,
-              label: name,
-              type: field.type,
-            });
+/**
+ * Truncates a long path label for display.
+ * Preserves the last segment (field name) for identification.
+ * @param path - Full field path
+ * @param maxLength - Maximum label length (default: 30)
+ * @returns Truncated path with '...' prefix if needed
+ */
+export function truncateLabel(path: string, maxLength: number = 30): string {
+  if (path.length <= maxLength) {
+    return path;
+  }
+
+  // Find last segment (after last dot or opening bracket)
+  const lastDot = path.lastIndexOf('.');
+  const lastBracket = path.lastIndexOf('[');
+  const lastSep = Math.max(lastDot, lastBracket);
+
+  if (lastSep > 0) {
+    const suffix = lastDot > lastBracket ? path.slice(lastDot) : path.slice(lastBracket);
+    const available = maxLength - suffix.length - 3; // 3 for "..."
+    if (available > 0) {
+      // Try to include some parent context
+      const remaining = path.slice(0, lastSep);
+      const prevDot = remaining.lastIndexOf('.');
+      const prevBracket = remaining.lastIndexOf('[');
+      const prevSep = Math.max(prevDot, prevBracket);
+      if (prevSep > 0 && remaining.length - prevSep <= available) {
+        return '...' + remaining.slice(prevSep) + suffix;
+      }
+      return '...' + suffix;
+    }
+  }
+
+  return '...' + path.slice(-maxLength + 3);
+}
+
+/**
+ * Recursively extracts fields from a field structure, yielding bounding boxes
+ * with full path labels.
+ * @param fields - Record of field name to ExtractedField
+ * @param parentPath - Path prefix for nested fields
+ * @param pageNumber - Optional page filter (1-indexed)
+ * @yields Objects with box, label, and type for each field with bounding regions
+ */
+export function* extractFieldsRecursively(
+  fields: Record<string, ExtractedField>,
+  parentPath: string = '',
+  pageNumber?: number
+): Generator<{ box: BoundingBox; label: string; type: string }> {
+  for (const [name, field] of Object.entries(fields)) {
+    const currentPath = parentPath ? `${parentPath}.${name}` : name;
+
+    // Yield bounding regions at current level
+    if (field.boundingRegions !== undefined && field.boundingRegions.length > 0) {
+      for (const region of field.boundingRegions) {
+        if (pageNumber === undefined || region.pageNumber === pageNumber) {
+          yield { box: region, label: currentPath, type: field.type };
+        }
+      }
+    } else if (field.source !== undefined) {
+      // Fallback: parse source grounding string
+      const parsedBoxes = parseSourceToBoundingBoxes(field.source);
+      for (const box of parsedBoxes) {
+        if (pageNumber === undefined || box.pageNumber === pageNumber) {
+          yield { box, label: currentPath, type: field.type };
+        }
+      }
+    }
+
+    // Recurse into nested objects
+    if (field.valueObject !== undefined) {
+      yield* extractFieldsRecursively(field.valueObject, currentPath, pageNumber);
+    }
+
+    // Recurse into array elements
+    if (field.valueArray !== undefined) {
+      for (let i = 0; i < field.valueArray.length; i++) {
+        const element = field.valueArray[i];
+        if (element === undefined) continue;
+        
+        const elementPath = `${currentPath}[${i}]`;
+
+        // Yield bounding regions for the array element itself
+        if (element.boundingRegions !== undefined && element.boundingRegions.length > 0) {
+          for (const region of element.boundingRegions) {
+            if (pageNumber === undefined || region.pageNumber === pageNumber) {
+              yield { box: region, label: elementPath, type: element.type };
+            }
+          }
+        } else if (element.source !== undefined) {
+          const parsedBoxes = parseSourceToBoundingBoxes(element.source);
+          for (const box of parsedBoxes) {
+            if (pageNumber === undefined || box.pageNumber === pageNumber) {
+              yield { box, label: elementPath, type: element.type };
+            }
           }
         }
-      } else if (field.source !== undefined) {
-        // Fallback: parse source grounding string
-        const parsedBoxes = parseSourceToBoundingBoxes(field.source);
-        for (const box of parsedBoxes) {
-          if (pageNumber === undefined || box.pageNumber === pageNumber) {
-            boxes.push({
-              box,
-              label: name,
-              type: field.type,
-            });
+
+        // Recurse into nested object within array element
+        if (element.valueObject !== undefined) {
+          yield* extractFieldsRecursively(element.valueObject, elementPath, pageNumber);
+        }
+
+        // Recurse into nested arrays within array element
+        if (element.valueArray !== undefined) {
+          // Create a synthetic record for recursion
+          const nestedFields: Record<string, ExtractedField> = {};
+          for (let j = 0; j < element.valueArray.length; j++) {
+            const nestedElement = element.valueArray[j];
+            if (nestedElement !== undefined) {
+              nestedFields[`[${j}]`] = nestedElement;
+            }
+          }
+          // Handle nested array by yielding with indexed path
+          for (let j = 0; j < element.valueArray.length; j++) {
+            const nestedElement = element.valueArray[j];
+            if (nestedElement === undefined) continue;
+            const nestedPath = `${elementPath}[${j}]`;
+            if (nestedElement.boundingRegions !== undefined && nestedElement.boundingRegions.length > 0) {
+              for (const region of nestedElement.boundingRegions) {
+                if (pageNumber === undefined || region.pageNumber === pageNumber) {
+                  yield { box: region, label: nestedPath, type: nestedElement.type };
+                }
+              }
+            }
+            if (nestedElement.valueObject !== undefined) {
+              yield* extractFieldsRecursively(nestedElement.valueObject, nestedPath, pageNumber);
+            }
           }
         }
       }
+    }
+  }
+}
+
+/**
+ * Extracts all bounding boxes from an analysis result.
+ * Recursively traverses nested objects and arrays, generating full path labels.
+ * Supports multi-content classification results with indexed prefixes.
+ * @param result - The analysis result to extract boxes from
+ * @param pageNumber - Optional page filter (1-indexed)
+ * @param pathFilter - Optional path pattern filter (glob-like)
+ */
+export function extractBoundingBoxes(
+  result: AnalysisResult,
+  pageNumber?: number,
+  pathFilter?: string
+): Array<{ box: BoundingBox; label: string; type: string }> {
+  const boxes: Array<{ box: BoundingBox; label: string; type: string }> = [];
+  const contents = result.contents ?? [];
+  const isMultiContent = contents.length > 1;
+
+  for (let contentIndex = 0; contentIndex < contents.length; contentIndex++) {
+    const content = contents[contentIndex];
+    if (content === undefined) continue;
+
+    // For multi-content with page ranges, check if this content covers the requested page
+    // If page range is not specified, assume the content covers all pages
+    if (pageNumber !== undefined && content.startPageNumber !== undefined) {
+      const startPage = content.startPageNumber;
+      const endPage = content.endPageNumber ?? startPage;
+      if (pageNumber < startPage || pageNumber > endPage) {
+        continue;
+      }
+    }
+
+    // Determine path prefix for multi-content results
+    const contentPrefix = isMultiContent ? `contents[${contentIndex}]` : '';
+
+    // Extract from fields using recursive traversal
+    for (const entry of extractFieldsRecursively(content.fields, contentPrefix, pageNumber)) {
+      // Apply path filter if specified
+      if (pathFilter !== undefined && !matchPathPattern(entry.label, pathFilter)) {
+        continue;
+      }
+      boxes.push(entry);
     }
 
     // Extract from tables
@@ -170,9 +340,16 @@ export function extractBoundingBoxes(
         if (table?.boundingRegions !== undefined) {
           for (const region of table.boundingRegions) {
             if (pageNumber === undefined || region.pageNumber === pageNumber) {
+              const tableLabel = contentPrefix
+                ? `${contentPrefix}.Table ${i + 1}`
+                : `Table ${i + 1}`;
+              // Apply path filter to tables as well
+              if (pathFilter !== undefined && !matchPathPattern(tableLabel, pathFilter)) {
+                continue;
+              }
               boxes.push({
                 box: region,
-                label: `Table ${i + 1}`,
+                label: tableLabel,
                 type: 'object',
               });
             }
@@ -187,9 +364,16 @@ export function extractBoundingBoxes(
         if (figure.boundingRegions !== undefined) {
           for (const region of figure.boundingRegions) {
             if (pageNumber === undefined || region.pageNumber === pageNumber) {
+              const figureLabel = contentPrefix
+                ? `${contentPrefix}.${figure.caption ?? figure.id}`
+                : (figure.caption ?? figure.id);
+              // Apply path filter to figures as well
+              if (pathFilter !== undefined && !matchPathPattern(figureLabel, pathFilter)) {
+                continue;
+              }
               boxes.push({
                 box: region,
-                label: figure.caption ?? figure.id,
+                label: figureLabel,
                 type: 'object',
               });
             }

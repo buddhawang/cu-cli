@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-28
+
+### Added
+
+- **Structured Field Overlay Rendering**
+  - Nested object fields render with full dot notation paths (e.g., `recipient.address.city`)
+  - Array elements render with bracket notation (e.g., `items[0].amount`, `items[1].quantity`)
+  - Multi-content classification results prefixed with content index (e.g., `contents[0].vendorName`)
+  - Path pattern filtering with glob-like syntax (`pathFilter` option)
+    - Exact matching: `vendorName`
+    - Array wildcards: `items[*].amount` matches all array elements
+    - Prefix/suffix wildcards: `recipient.*`, `*.amount`
+  - `truncateLabel()` for long path display
+
+- **New Functions**
+  - `extractFieldsRecursively()` - Generator function for recursive field traversal
+  - `matchPathPattern()` - Glob-like pattern matching for path filtering
+
+### Changed
+
+- `extractBoundingBoxes()` now accepts optional `pathFilter` parameter
+- Field type colors use leaf field type (not parent container type)
+- Single-content results remain backward compatible (no prefix added)
+
 ## [0.2.0] - 2026-01-28
 
 ### Added

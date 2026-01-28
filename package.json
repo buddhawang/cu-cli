@@ -1,6 +1,6 @@
 {
   "name": "@azure/cu-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI for Azure Content Understanding - analyze documents, discover analyzers, and manage BYOC models",
   "type": "module",
   "main": "dist/cu.cjs",
